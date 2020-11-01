@@ -1,0 +1,21 @@
+{
+  "extends": [
+    "standard",
+    "plugin:jsdoc/recommended",
+    "plugin:json/recommended"
+  ],
+  "parserOptions": {
+    "ecmaVersion": 8
+  },
+  "plugins": [
+    "jsdoc",
+    "nova"
+  ],
+  "env": {
+      "commonjs": true,
+      "nova/nova": true
+  },
+  "rules": {
+    "jsdoc/newline-after-description": "off"
+  }
+}
