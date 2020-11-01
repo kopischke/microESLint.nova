@@ -1,0 +1,18 @@
+{
+  "ESLint for Nova – the micro edition.": "ESLint für Nova – Micro-Edition.",
+
+  "eslint.msg.parse-error": "Fehler beim Parsen",
+  "eslint.msg.activation-error": "Fehler bei der Aktivierung der µESLint-Erweiterung. Bitte prüfen Sie die Erweiterungskonsole auf Fehlermeldungen.",
+  "eslint.msg.no-linter": "Es wurde kein ausführbares ›eslint‹-Skript im System gefunden. Sollte ESLint bereits installiert seins, muss sein Skript im $PATH zu finden sein. Andernfalls erklärt die README dieser Erweiterung, wie es zu installieren ist.",
+
+  "eslint.opts.disable.title": "ESLint deaktivieren",
+  "eslint.opts.disable.description": "Schaltet die ESLint-Fehlerüberprüfung für das Projekt ganz aus.",
+
+  "eslint.cmd.open-config.title": "ESLint-Konfiguration öffnen …",
+  "eslint.cmd.open-config.msg.no-path": "Die Datei, für die eine ESLint-Konfiguration gesucht wurde, ist bisher nicht gespeichert worden. ESLint kann keine Konfiguration für unegspeicherte Dateien bestimmen.",
+  "eslint.cmd.open-config.msg.no-config": "Für diesen Dateipfad kann keine ESLint-Konfiguration gefunden werden.",
+  "eslint.cmd.open-ignore.title": "ESLint-Ausschlussdatei öffnen …",
+  "eslint.cmd.open-ignore.msg.no-path": "Die Datei, für die eine ESLint-Ausschlussdatei gesucht wurde, ist bisher nicht gespeichert worden. ESLint kann keine Ausschlussdatei für unegspeicherte Dateien bestimmen.",
+  "eslint.cmd.open-ignore.msg.no-config": "Für diesen Dateipfad kann keine ESLint-Ausschlussdatei gefunden werden.",
+  "eslint.cmd.workspace-prefs.title": "µESLint Projekt-Einstellungen …"
+}

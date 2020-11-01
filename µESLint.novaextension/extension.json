@@ -1,0 +1,48 @@
+{
+  "identifier": "net.kopischke.eslint",
+  "name": "µESLint",
+  "organization": "Martin Kopischke",
+  "description": "ESLint for Nova – the micro edition.",
+  "version": "1.0.0",
+  "repository": "https://github.com/kopischke/microESLint.nova",
+  "bugs": "https://github.com/kopischke/microESLint.nova/issues",
+  "categories": ["issues", "commands"],
+
+  "main": "main.js",
+
+  "entitlements": {
+    "filesystem": "readwrite",
+    "process": true
+  },
+
+  "configWorkspace": [
+    {
+      "key": "eslint.opts.disable",
+      "title": "eslint.opts.disable.title",
+      "description": "eslint.opts.disable.description",
+      "type": "boolean",
+      "default": false
+    }
+  ],
+
+  "commands": {
+    "editor": [
+      {
+        "command": "eslint.cmd.open-config",
+        "title": "eslint.cmd.open-config.title",
+        "when": "documentHasPath"
+      },
+      {
+        "command": "eslint.cmd.open-ignore",
+        "title": "eslint.cmd.open-ignore.title",
+        "when": "documentHasPath"
+      }
+    ],
+    "extensions": [
+      {
+        "command": "eslint.cmd.workspace-prefs",
+        "title": "eslint.cmd.workspace-prefs.title"
+      }
+    ]
+  }
+}

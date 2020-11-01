@@ -1,0 +1,18 @@
+{
+  "ESLint for Nova – the micro edition.": "ESLint for Nova – the micro edition.",
+
+ "eslint.msg.parse-error": "Parse Error",
+ "eslint.msg.activation-error": "There was an error activating the µESLint extension. Please check the extension console for errors.",
+ "eslint.msg.no-linter": "No “eslint” executable was found while activating the µESLint extension. If ESLint is intalled on your system, make sure its executable is in your $PATH; if it is not, please consult the extension README about how to install ESLint on your system.",
+
+ "eslint.opts.disable.title": "Disable ESLint",
+ "eslint.opts.disable.description": "Switches off all ESLint based linting for the workspace.",
+
+ "eslint.cmd.open-config.title": "Open ESLint Config…",
+ "eslint.cmd.open-config.msg.no-path": "The file an ESLint configuration was searched for has not been saved yet. ESLint cannot determine the configuration for unsaved files.",
+ "eslint.cmd.open-config.msg.no-config": "No ESLint configuration found for this file path.",
+ "eslint.cmd.open-ignore.title": "Open ESLint Ignore file…",
+ "eslint.cmd.open-ignore.msg.no-path": "The file an ESLint ignore file was searched for has not been saved yet. ESLint cannot determine the ignore file for unsaved files.",
+ "eslint.cmd.open-ignore.msg.no-config": "No ESLint ignore file found for this file path.",
+ "eslint.cmd.workspace-prefs.title": "µESLint Workspace Preferences…"
+}
