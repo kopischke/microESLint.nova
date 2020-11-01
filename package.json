@@ -1,0 +1,38 @@
+{
+  "name": "net.kopischke.eslint",
+  "version": "1.0.0",
+  "description": "ESLint for Nova – the micro edition.",
+  "main": "µESLint.novaextension/Scripts/main.js",
+  "dependencies": {},
+  "devDependencies": {
+    "eslint": "^7.10.0",
+    "eslint-config-standard": "^14.1.1",
+    "eslint-plugin-import": "^2.22.1",
+    "eslint-plugin-jsdoc": "^30.6.3",
+    "eslint-plugin-json": "^2.1.2",
+    "eslint-plugin-node": "^11.1.0",
+    "eslint-plugin-nova": "^1.1.0",
+    "eslint-plugin-promise": "^4.2.1",
+    "eslint-plugin-standard": "^4.0.1"
+  },
+  "peerDependencies": {
+    "eslint": "^4 || ^5 || ^6 || ^7"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kopischke/microESLint.nova.git"
+  },
+  "keywords": [
+    "nova.app",
+    "eslint"
+  ],
+  "author": "Martin Kopischke <martin@kopischke.net>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/kopischke/microESLint.nova/issues"
+  },
+  "homepage": "https://github.com/kopischke/microESLint.nova#readme"
+}
