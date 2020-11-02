@@ -244,3 +244,10 @@ exports.activate = async function () {
     }
   }
 }
+
+/**
+ * Clean up after the extension.
+ */
+exports.deactivate = function () {
+  collection.clear()
+}
