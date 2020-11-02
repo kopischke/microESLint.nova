@@ -51,6 +51,15 @@ exports.binDir = function () {
 }
 
 /**
+ * Qualified path to the extension’s script vendor directory.
+ * @returns {string} The path.
+ * @param {string} vendor - The vendor name.
+ */
+exports.vendorDir = function (vendor) {
+  return nova.path.join(exports.scriptDir(), 'vendor', vendor)
+}
+
+/**
  * Qualified path to the temporary storage path for the extension.
  * This function guarantees the path exists and is a writable directory.
  * @returns {string} The path to the temporary storage directory.
