@@ -3,7 +3,6 @@
 
  "eslint.msg.parse-error": "Parse Error",
  "eslint.msg.activation-error": "There was an error activating the µESLint extension. Please check the extension console for errors.",
- "eslint.msg.no-linter": "No “eslint” executable was found while activating the µESLint extension. If ESLint is intalled on your system, make sure its executable is in your $PATH; if it is not, please consult the extension README about how to install ESLint on your system.",
 
  "eslint.opts.disable.title": "Disable ESLint",
  "eslint.opts.disable.description": "Switches off all ESLint based linting for the workspace.",

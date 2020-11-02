@@ -3,14 +3,14 @@
  */
 const cmds = require('./lib/commands')
 const { ESLint } = require('./lib/eslint')
-const { prefixCommand, prefixConfig, prefixMessage } = require('./lib/extension')
+const ext = require('./lib/extension')
 const { runAsync } = require('./lib/process')
 const { getDocumentText } = require('./lib/utils')
 
 /**
- * ESLint instance to use for linting.
+ * ESLint instances to use for linting.
  */
-let linter = null
+const linters = {}
 
 /**
  * The IssueCollection used. We cannot use the default issue collection
@@ -20,12 +20,10 @@ let linter = null
 const collection = new IssueCollection()
 
 /**
- * Extension notifications.
+ * Extension state.
+ * @property {boolean} activationErrorHandled - Has an activation error been handled already?
  */
-const notifications = {
-  'activation-error': { fallback: 'ESLint not found', level: 'error', fired: false },
-  'no-linter': { fallback: 'Activation error', level: 'warning', fired: false }
-}
+const state = { activationErrorHandled: false }
 
 /**
  * Configuration keys.
@@ -33,8 +31,14 @@ const notifications = {
  * @property {string} binpath - The cached `eslint` binary path.
  */
 const configKeys = {
-  disabled: `${prefixConfig()}.disable`,
-  binpath: `${prefixConfig()}.eslint-path`
+  disabled: `${ext.prefixConfig()}.disable`
+}
+
+/**
+ * Extension binaries.
+ */
+const binaries = {
+  which: nova.path.join(ext.vendorDir('npm-which'), 'bin', 'npm-which.js')
 }
 
 /**
@@ -51,23 +55,25 @@ const queue = {}
  */
 
 /**
- * Create an ESLint instance with a confirmed binary path.
+ * Get or create an ESLint instance for a config path.
  * @returns {?object} An ESLint instance, if a valid binary path was found.
+ * @param {string} config - The path to an ESLint configuration file.
  */
-async function makeLinter () {
-  let eslint = nova.config.get(configKeys.binpath)
+async function getLinter (config) {
+  let eslint = linters[config]
   if (eslint == null || !nova.fs.access(eslint, nova.fs.X_OK)) {
-    eslint = null
+    const bin = binaries.which
+    const cwd = nova.path.dirname(config)
+    const opts = { args: ['eslint'], cwd: cwd, shell: true }
 
-    const opts = { args: ['eslint'], shell: true }
-    const { code, stderr, stdout } = await runAsync('which', opts)
+    const { code, stderr, stdout } = await runAsync(bin, opts)
+
     if (stderr.length) console.error(stderr)
     if (code === 0) eslint = stdout.split('\n')[0]
-
-    nova.config.set(configKeys.binpath, eslint)
+    linters[config] = eslint ? new ESLint(eslint) : null
   }
 
-  linter = eslint ? new ESLint(eslint) : null
+  return linters[config]
 }
 
 /**
@@ -112,7 +118,7 @@ function filterIssues (issues, document) {
  * @returns {boolean} Whether a lint operation was started.
  * @param {object} editor - The TextEditor to lint.
  */
-function maybeLint (editor) {
+async function maybeLint (editor) {
   if (nova.workspace.config.get(configKeys.disabled)) {
     collection.clear()
     return []
@@ -123,56 +129,57 @@ function maybeLint (editor) {
   const doc = editor.document
   if (doc.isUntitled || doc.isRemote) return []
 
-  if (linter == null) {
-    makeLinter()
-      .then(_ => { if (linter) return maybeLint(editor) })
-      .catch(console.error)
-    return []
-  }
-
+  // get this early, there can be race conditions
+  const src = getDocumentText(doc)
   const uri = doc.uri
   const path = doc.path
 
-  if (ESLint.config(path) != null) {
-    if (queue[uri] == null) queue[uri] = { lastStarted: 1, lastEnded: 0 }
-    const index = queue[uri].lastStarted++
+  const config = ESLint.config(path)
+  if (config == null) return []
 
-    return linter.lint(getDocumentText(doc), path)
-      .then(results => {
-        if (queue[uri].lastEnded < index) {
-          queue[uri].lastEnded = index
-          collection.set(uri, filterIssues(results, doc))
-        }
-      })
-      .catch(error => {
-        console.error(error)
-        collection.remove(uri)
-        makeLinter()
-      })
-      .finally(function () { return [] })
+  const linter = await getLinter(config)
+  if (linter == null) return []
+
+  if (queue[uri] == null) queue[uri] = { lastStarted: 1, lastEnded: 0 }
+  const index = queue[uri].lastStarted++
+
+  try {
+    const results = await linter.lint(src, path)
+    // Drop results that ended out of order in the queue.
+    if (queue[uri].lastEnded < index) {
+      queue[uri].lastEnded = index
+      collection.set(uri, filterIssues(results, doc))
+    }
+  } catch (error) {
+    collection.remove(uri)
+    console.error(error)
   }
+
+  return []
 }
 
 /**
- * Notify the user just once.
- * @param {string} key - The key of the notification to fire.
+ * Ensure included binaries are executable.
+ * @returns {number} The number of `chmod`ed binaries.
+ * @throws {Error} When any of the extension binaries cannot be located.
  */
-function notifyOnce (key) {
-  const notif = notifications[key]
-  if (!notif.fired) {
-    const msg = nova.localize(`${prefixMessage()}.${key}`, notif.fallback)
-    switch (notif.level) {
-      case 'error':
-        nova.workspace.showErrorMessage(msg)
-        break
-      case 'warning':
-        nova.workspace.showWarningMessage(msg)
-        break
-      default:
-        nova.workspace.showInformativeMessage(msg)
+async function chmodBinaries () {
+  const binfiles = Object.values(binaries)
+  const nonexec = []
+  binfiles.forEach(path => {
+    if (!nova.fs.access(path, nova.fs.F_OK)) {
+      const msg = `Can’t locate extension binaries at path “${path}”.`
+      throw new Error(msg)
     }
-    notif.fired = true
+    if (!nova.fs.access(path, nova.fs.X_OK)) nonexec.push(path)
+  })
+
+  if (nonexec.length) {
+    const options = { args: ['+x'].concat(nonexec) }
+    const results = await runAsync('/bin/chmod', options)
+    if (results.code > 0) throw new Error(results.stderr)
   }
+  return nonexec.length
 }
 
 /**
@@ -188,7 +195,7 @@ function registerAssistant () {
  * Register the extension Commands.
  */
 function registerCommands () {
-  const prefix = prefixCommand()
+  const prefix = ext.prefixCommand()
   nova.commands.register(`${prefix}.open-config`, cmds.openESLintConfig)
   nova.commands.register(`${prefix}.open-ignore`, cmds.openESLintIgnore)
   nova.commands.register(`${prefix}.workspace-prefs`, _ => {
@@ -209,16 +216,19 @@ function registerConfigListeners () {
  * Initialise the extension in the workspace.
  * Inform user of errors while activating (once only).
  */
-exports.activate = function () {
+exports.activate = async function () {
   try {
-    makeLinter()
-      .then(_ => { if (!linter) notifyOnce('no-linter') })
-      .catch(console.error)
+    const chmodding = chmodBinaries()
     registerAssistant()
     registerCommands()
     registerConfigListeners()
+    await chmodding
   } catch (error) {
     console.error(error)
-    if (!nova.inDevMode()) notifyOnce('activation-error')
+    if (!nova.inDevMode() && !state.activationErrorHandled) {
+      const msg = nova.localize(`${ext.prefixMessage()}.msg.activation-error`)
+      nova.workspace.showErrorMessage(msg)
+      state.activationErrorHandled = true
+    }
   }
 }

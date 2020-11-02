@@ -3,7 +3,6 @@
 
   "eslint.msg.parse-error": "Fehler beim Parsen",
   "eslint.msg.activation-error": "Fehler bei der Aktivierung der µESLint-Erweiterung. Bitte prüfen Sie die Erweiterungskonsole auf Fehlermeldungen.",
-  "eslint.msg.no-linter": "Es wurde kein ausführbares ›eslint‹-Skript im System gefunden. Sollte ESLint bereits installiert seins, muss sein Skript im $PATH zu finden sein. Andernfalls erklärt die README dieser Erweiterung, wie es zu installieren ist.",
 
   "eslint.opts.disable.title": "ESLint deaktivieren",
   "eslint.opts.disable.description": "Schaltet die ESLint-Fehlerüberprüfung für das Projekt ganz aus.",
