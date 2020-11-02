@@ -43,6 +43,14 @@ exports.scriptDir = function () {
 }
 
 /**
+ * Qualified path to the extension’s script binaries’ directory.
+ * @returns {string} The path.
+ */
+exports.binDir = function () {
+  return nova.path.join(exports.scriptDir(), 'bin')
+}
+
+/**
  * Qualified path to the temporary storage path for the extension.
  * This function guarantees the path exists and is a writable directory.
  * @returns {string} The path to the temporary storage directory.
