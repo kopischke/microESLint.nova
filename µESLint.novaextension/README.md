@@ -12,7 +12,7 @@ Hence “_µESLint_” and “micro edition” – this extension does the absol
 
 ## Features
 
-_µESLint_ has exactly one feature: if the ESLint CLI would lint a file you have open in Nova, _µESLint_ will do that too, in the exact same way, with the same results – but on every change and using Nova’s Problems pane.
+_µESLint_ has exactly one feature: if the ESLint CLI would lint a file you have open in Nova, _µESLint_ will do that too, in the exact same way, with the same results – but on every change and using Nova’s Issues pane.
 
 ![_µESLint.nova linting feature](https://raw.githubusercontent.com/kopischke/microESLint.nova/main/img/µeslint-linting-feature.png "Linting with µESLint.")
 
