@@ -3,7 +3,7 @@
   "name": "µESLint",
   "organization": "Martin Kopischke",
   "description": "ESLint for Nova – the micro edition.",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "repository": "https://github.com/kopischke/microESLint.nova",
   "bugs": "https://github.com/kopischke/microESLint.nova/issues",
   "categories": ["issues", "commands"],
