@@ -22,23 +22,17 @@ So: one and a half features. And all of it should work reliably, everywhere, wit
 
 ## Requirements
 
-µESLint requires you to have a **globally** installed copy of ESLint, version 4 or better. Project-specific ESLint installs will **not** work. If you don’t have ESLint installed globally  already, you can install it using [Homebrew](https://brew.sh):
+µESLint requires you to have ESLint, version 4 or better, installed either globally or as a project dependency. You can install ESLint globally using [Homebrew](https://brew.sh):
 
 ```sh
 brew install eslint
 ```
 
-or using a JavaScript package manager, i.e.:
+or install it, either globally or locally, using a JavaScript package manager. The [ESLint “Getting Started“ chapter of the User Guide](https://eslint.org/docs/user-guide/getting-started) explains all you need to know about this.
 
-```sh
-npm install -g eslint
+Once this is done, you need to configure ESLint. Please refer to the ESLint User Guide for a [quick overview](https://eslint.org/docs/user-guide/getting-started#configuration) and an [in-depth explanation](https://eslint.org/docs/user-guide/configuring).
 
-# or
-
-yarn install eslint
-```
-
-Then, you need to configure ESLint itself. The [ESLint documentation’s “Getting Started“ chapter](https://eslint.org/docs/user-guide/getting-started#configuration) has a good explanation of what to do (but ignore the part on installing – see above).
+(Technically, this extension also requires [Node](https://nodejs.org/) to be installed on your system. As there is no way I am aware of to install, never mind run, ESLint without Node, you need not worry about that.)
 
 ## Configuration
 
