@@ -56,10 +56,10 @@ const queue = {}
  */
 
 /**
- * Check that Node.js is installed.
+ * Check that node.js is installed.
  * We need it both for `npm-which` to work and for ESLint (until someone
  * re-implements it in Rust, or Go, bless their little cotton socks).
- * @returns {boolean} Is Node.js installed in the user’s $PATH?
+ * @returns {boolean} Is node.js installed in the user’s $PATH?
  */
 async function hasNode () {
   if (!state.nodeInstalled) {
@@ -146,7 +146,7 @@ async function maybeLint (editor) {
   const doc = editor.document
   if (doc.isUntitled || doc.isRemote) return []
 
-  // get this early, there can be race conditions
+  // Get this early, there can be race conditions.
   const src = getDocumentText(doc)
   const uri = doc.uri
   const path = doc.path
