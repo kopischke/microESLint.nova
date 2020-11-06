@@ -247,12 +247,11 @@ function registerConfigListeners () {
  */
 exports.activate = async function () {
   try {
-    const chmodding = chmodBinaries()
+    await chmodBinaries()
     updateConfig()
     registerAssistant()
     registerCommands()
     registerConfigListeners()
-    await chmodding
   } catch (error) {
     console.error(error)
     if (!nova.inDevMode() && !state.activationErrorHandled) {
