@@ -22,8 +22,9 @@ const collection = new IssueCollection()
 /**
  * Extension state.
  * @property {boolean} activationErrorHandled - Has an activation error been handled already?
+ * @property {boolean} nodeInstalled - Is node.js in the user’s path?
  */
-const state = { activationErrorHandled: false }
+const state = { activationErrorHandled: false, nodeInstalled: false }
 
 /**
  * Configuration keys.
@@ -53,6 +54,22 @@ const queue = {}
  * @property {number} lastStarted - The index of the last started queue item.
  * @property {number} lastEnded - The index of the last ended queue item.
  */
+
+/**
+ * Check that Node.js is installed.
+ * We need it both for `npm-which` to work and for ESLint (until someone
+ * re-implements it in Rust, or Go, bless their little cotton socks).
+ * @returns {boolean} Is Node.js installed in the user’s $PATH?
+ */
+async function hasNode () {
+  if (!state.nodeInstalled) {
+    const opts = { args: ['-s', 'node'], shell: true }
+    const { code } = await runAsync('which', opts)
+    state.nodeInstalled = code === 0
+  }
+
+  return state.nodeInstalled
+}
 
 /**
  * Get or create an ESLint instance for a config path.
@@ -134,9 +151,10 @@ async function maybeLint (editor) {
   const uri = doc.uri
   const path = doc.path
 
+  // We need: Node, an ESLint configuration, and an ESLint instance.
+  if (!await hasNode()) return []
   const config = ESLint.config(path)
   if (config == null) return []
-
   const linter = await getLinter(config)
   if (linter == null) return []
 
