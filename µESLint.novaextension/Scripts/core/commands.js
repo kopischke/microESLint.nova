@@ -1,9 +1,9 @@
 /**
- * @file Commands functionality.
+ * @file Core extension commands functionality.
  */
 const { ESLint } = require('./eslint')
-const { prefixCommand } = require('./extension')
-const { notify } = require('./utils')
+const { prefixCommand } = require('../lib/extension')
+const { notify } = require('../lib/utils')
 
 /**
  * Open the ESLint configuration file relevant for a TextEditor.

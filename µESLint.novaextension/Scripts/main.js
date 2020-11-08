@@ -1,8 +1,8 @@
 /**
  * @file Main extension script.
  */
-const cmds = require('./lib/commands')
-const { ESLint } = require('./lib/eslint')
+const cmds = require('./core/commands')
+const { ESLint } = require('./core/eslint')
 const ext = require('./lib/extension')
 const { runAsync } = require('./lib/process')
 const { getDocumentText } = require('./lib/utils')

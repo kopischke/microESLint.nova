@@ -1,9 +1,9 @@
 /**
  * @file ESLint linter class file.
  */
-const { tmpDir } = require('./extension')
-const { runAsync } = require('./process')
-const { homePath, requireJSON } = require('./utils')
+const { tmpDir } = require('../lib/extension')
+const { runAsync } = require('../lib/process')
+const { homePath, requireJSON } = require('../lib/utils')
 
 class ESLint {
   /**
