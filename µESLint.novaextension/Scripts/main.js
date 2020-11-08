@@ -1,30 +1,12 @@
 /**
  * @file Main extension script.
  */
+const { findInPATH, makeExecutable } = require('./core/binaries')
 const cmds = require('./core/commands')
 const { ESLint } = require('./core/eslint')
 const ext = require('./lib/extension')
 const { runAsync } = require('./lib/process')
 const { getDocumentText } = require('./lib/utils')
-
-/**
- * ESLint instances to use for linting.
- */
-const linters = {}
-
-/**
- * The IssueCollection used. We cannot use the default issue collection
- * provided via the AssistantRegistry because there is no way to void it,
- * e.g. on configuration changes.
- */
-const collection = new IssueCollection()
-
-/**
- * Extension state.
- * @property {boolean} activationErrorHandled - Has an activation error been handled already?
- * @property {boolean} nodeInstalled - Is node.js in the user’s path?
- */
-const state = { activationErrorHandled: false, nodeInstalled: false }
 
 /**
  * Configuration keys.
@@ -43,10 +25,23 @@ const binaries = {
 }
 
 /**
- * Simple queue helping guarantee asynchronous linting chronology.
- * @see {@link maybeLint}
+ * The IssueCollection used. We cannot use the default issue collection
+ * provided via the AssistantRegistry because there is no way to void it,
+ * e.g. on configuration changes.
  */
-const queue = {}
+const collection = new IssueCollection()
+
+/**
+ * Extension state.
+ * @property {boolean} activationErrorHandled - Has an activation error been handled already?
+ * @property {boolean} nodeInstalled - Is node.js in the user’s path?
+ */
+const state = { activationErrorHandled: false, nodeInstalled: false }
+
+/**
+ * ESLint instances to use for linting.
+ */
+const linters = {}
 
 /**
  * A queue data item.
@@ -56,27 +51,20 @@ const queue = {}
  */
 
 /**
- * Check that node.js is installed.
- * We need it both for `npm-which` to work and for ESLint (until someone
- * re-implements it in Rust, or Go, bless their little cotton socks).
- * @returns {boolean} Is node.js installed in the user’s $PATH?
+ * Simple queue helping guarantee asynchronous linting chronology.
+ * @see {@link maybeLint}
  */
-async function hasNode () {
-  if (!state.nodeInstalled) {
-    const opts = { args: ['-s', 'node'], shell: true }
-    const { code } = await runAsync('which', opts)
-    state.nodeInstalled = code === 0
-  }
-
-  return state.nodeInstalled
-}
+const queue = {}
 
 /**
- * Get or create an ESLint instance for a config path.
+ * Get or create an ESLint instance for a document path.
  * @returns {?object} An ESLint instance, if a valid binary path was found.
- * @param {string} config - The path to an ESLint configuration file.
+ * @param {string} docPath - The path to a document to lint.
  */
-async function getLinter (config) {
+async function getLinter (docPath) {
+  const config = ESLint.config(docPath)
+  if (config == null) return null
+
   let eslint = linters[config]
   if (eslint == null || !nova.fs.access(eslint, nova.fs.X_OK)) {
     const bin = binaries.which
@@ -151,11 +139,11 @@ async function maybeLint (editor) {
   const uri = doc.uri
   const path = doc.path
 
-  // We need: Node, an ESLint configuration, and an ESLint instance.
-  if (!await hasNode()) return []
-  const config = ESLint.config(path)
-  if (config == null) return []
-  const linter = await getLinter(config)
+  // We need Node (both for npm-which and eslint).
+  if (!state.nodeInstalled) state.nodeInstalled = await findInPATH('node')
+  if (!state.nodeInstalled) return []
+
+  const linter = await getLinter(path)
   if (linter == null) return []
 
   if (queue[uri] == null) queue[uri] = { lastStarted: 1, lastEnded: 0 }
@@ -174,30 +162,6 @@ async function maybeLint (editor) {
   }
 
   return []
-}
-
-/**
- * Ensure included binaries are executable.
- * @returns {number} The number of `chmod`ed binaries.
- * @throws {Error} When any of the extension binaries cannot be located.
- */
-async function chmodBinaries () {
-  const binfiles = Object.values(binaries)
-  const nonexec = []
-  binfiles.forEach(path => {
-    if (!nova.fs.access(path, nova.fs.F_OK)) {
-      const msg = `Can’t locate extension binaries at path “${path}”.`
-      throw new Error(msg)
-    }
-    if (!nova.fs.access(path, nova.fs.X_OK)) nonexec.push(path)
-  })
-
-  if (nonexec.length) {
-    const options = { args: ['+x'].concat(nonexec) }
-    const results = await runAsync('/bin/chmod', options)
-    if (results.code > 0) throw new Error(results.stderr)
-  }
-  return nonexec.length
 }
 
 /**
@@ -247,7 +211,7 @@ function registerConfigListeners () {
  */
 exports.activate = async function () {
   try {
-    await chmodBinaries()
+    await makeExecutable(Object.values(binaries))
     updateConfig()
     registerAssistant()
     registerCommands()
