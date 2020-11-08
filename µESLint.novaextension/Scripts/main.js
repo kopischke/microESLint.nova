@@ -36,9 +36,12 @@ const collection = new IssueCollection()
 /**
  * Extension state.
  * @property {boolean} activationErrorHandled - Has an activation error been handled already?
- * @property {boolean} nodeInstalled - Is node.js in the user’s path?
+ * @property {boolean} nodeInstall - Is node.js in the user’s path?
  */
-const state = { activationErrorHandled: false, nodeInstalled: false }
+const state = {
+  activationErrorHandled: false,
+  nodeInstall: { found: false, lastChecked: null }
+}
 
 /**
  * ESLint instances to use for linting.
@@ -59,16 +62,35 @@ const linters = {}
 const queue = {}
 
 /**
+ * Check if we should throttle an operation.
+ * @returns {boolean} Whether the operation should be throttled.
+ * @param {?number} since - The UNIX timestamp to check the throttling delay for.
+ */
+function throttled (since) {
+  const limit = 60 * 1000 // = 1 min.
+  return since != null && Date.now() - since <= limit
+}
+
+/**
  * Get or create an ESLint instance for a document path.
- * @returns {?object} An ESLint instance, if a valid binary path was found.
+ * @returns {?object} An ESLint instance, if a valid config and binary path were found.
  * @param {string} docPath - The path to a document to lint.
  */
 async function getLinter (docPath) {
   const config = ESLint.config(docPath)
   if (config == null) return null
 
-  let eslint = linters[config]
-  if (eslint == null || !nova.fs.access(eslint, nova.fs.X_OK)) {
+  // A `null` ESLint instance should only be present on the very first attempt,
+  // or when neither a global nor a local install is found. We always search for
+  // a binary in the former case (throttling does not happen on `null` timestamps),
+  // but throttle searches in the latter case, so as to not tax the user’s system.
+  // We do not throttle a search when the provided binary is not valid, as that can
+  // only happen when it has been deinstalled or disabled in the meantime and the
+  // first search will either set it to a new valid ESLint instance, or to `null`.
+  if (linters[config] == null) linters[config] = { eslint: null, lastUpdated: null }
+  let eslint = linters[config].eslint
+  const since = linters[config].lastUpdated
+  if ((eslint == null && !throttled(since)) || !nova.fs.access(eslint, nova.fs.X_OK)) {
     const bin = binaries.which
     const cwd = nova.path.dirname(config)
     const opts = { args: ['eslint'], cwd: cwd, shell: true }
@@ -76,19 +98,15 @@ async function getLinter (docPath) {
     const { code, stderr, stdout } = await runAsync(bin, opts)
 
     if (stderr.length) console.error(stderr)
-    if (code === 0) eslint = stdout.split('\n')[0]
-    linters[config] = eslint ? new ESLint(eslint) : null
+    eslint = code === 0 ? new ESLint(stdout.split('\n')[0]) : null
+    linters[config] = { eslint: eslint, lastUpdated: Date.now() }
   }
 
-  return linters[config]
+  return eslint
 }
 
 /**
  * Launch a lint operation, if possible.
- * Because lint operations are asynchronous and their duration can
- * vary widely depending on how busy the system is, we need to ensure
- * we respect their start chronology when processing their results
- * (i.e. ensure that slower older runs do not overwrite faster newer ones).
  * @returns {boolean} Whether a lint operation was started.
  * @param {object} editor - The TextEditor to lint.
  */
@@ -109,18 +127,26 @@ async function maybeLint (editor) {
   const path = doc.path
 
   // We need Node (both for npm-which and eslint).
-  if (!state.nodeInstalled) state.nodeInstalled = await findInPATH('node')
-  if (!state.nodeInstalled) return []
+  // To not flood the user’s system with searches, we throttle them
+  // (the original `null` timestamp ensures we always do the first pass).
+  const since = state.nodeInstall.lastChecked
+  if (!state.nodeInstall.found && !throttled(since)) {
+    state.nodeInstall.found = await findInPATH('node')
+    state.nodeInstall.lastChecked = Date.now()
+  }
+  if (!state.nodeInstall.found) return []
 
   const linter = await getLinter(path)
   if (linter == null) return []
 
+  // Because lint operations are asynchronous and their duration can
+  // vary widely depending on how busy the system is, we need to ensure
+  // we respect their start chronology when processing their results
+  // (i.e. ensure that slower older runs do not overwrite faster newer ones).
   if (queue[uri] == null) queue[uri] = { lastStarted: 1, lastEnded: 0 }
   const index = queue[uri].lastStarted++
-
   try {
     const results = await linter.lint(src, path)
-    // Drop results that ended out of order in the queue.
     if (queue[uri].lastEnded < index) {
       queue[uri].lastEnded = index
       updateIssues(collection, filterIssues(results, doc), doc)
