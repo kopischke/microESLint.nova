@@ -6,37 +6,19 @@ const { prefixCommand } = require('../lib/extension')
 const { notify } = require('../lib/utils')
 
 /**
- * Open the ESLint configuration file relevant for a TextEditor.
+ * Open an ESLint file relevant for a TextEditor.
+ * @param {string} what - The file to open: one of “config” or “ignore”.
  * @param {object} editor - The TextEditor context.
  */
-exports.openESLintConfig = function (editor) {
-  const id = `${prefixCommand()}.open-config`
+exports.open = function (what, editor) {
+  const id = `${prefixCommand()}.open-${what}`
   const path = editor.document.path || nova.workspace.path
   if (path) {
-    const config = ESLint.config(path)
-    if (config) {
-      nova.workspace.openFile(config)
+    const target = ESLint[what](path)
+    if (target) {
+      nova.workspace.openFile(target)
     } else {
-      notify(id, nova.localize(`${id}.msg.no-config`))
-    }
-  } else {
-    notify(id, nova.localize(`${id}.msg.no-path`))
-  }
-}
-
-/**
- * Open the ESLint ignore file relevant for a TextEditor.
- * @param {object} editor - The TextEditor context.
- */
-exports.openESLintIgnore = function (editor) {
-  const id = `${prefixCommand()}.open-ignore`
-  const path = editor.document.path || nova.workspace.path
-  if (path) {
-    const ignore = ESLint.ignore(path)
-    if (ignore) {
-      nova.workspace.openFile(ignore)
-    } else {
-      notify(id, nova.localize(`${id}.msg.no-config`))
+      notify(id, nova.localize(`${id}.msg.no-match`))
     }
   } else {
     notify(id, nova.localize(`${id}.msg.no-path`))

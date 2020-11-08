@@ -211,8 +211,8 @@ function registerAssistant () {
  */
 function registerCommands () {
   const prefix = ext.prefixCommand()
-  nova.commands.register(`${prefix}.open-config`, cmds.openESLintConfig)
-  nova.commands.register(`${prefix}.open-ignore`, cmds.openESLintIgnore)
+  nova.commands.register(`${prefix}.open-config`, cmds.open.bind(this, 'config'))
+  nova.commands.register(`${prefix}.open-ignore`, cmds.open.bind(this, 'ignore'))
   nova.commands.register(`${prefix}.workspace-prefs`, _ => {
     nova.workspace.openConfig()
   })
