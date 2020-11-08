@@ -4,6 +4,8 @@
 const { findInPATH, makeExecutable } = require('./core/binaries')
 const cmds = require('./core/commands')
 const { ESLint } = require('./core/eslint')
+const { filterIssues, updateIssues } = require('./core/issues')
+
 const ext = require('./lib/extension')
 const { runAsync } = require('./lib/process')
 const { getDocumentText } = require('./lib/utils')
@@ -82,39 +84,6 @@ async function getLinter (docPath) {
 }
 
 /**
- * Filter out ESLint issues that are not source code issues.
- * @returns {Array.<?object>} An array of {@link Issue} objects.
- * @param {Array.<?object>} issues - The issues to filter.
- * @param {object} document - The {@link TextDocument} the issues apply to.
- */
-function filterIssues (issues, document) {
-  if (issues.length === 1) {
-    const issue = issues[0]
-
-    // Suppress “file ignored” warnings for files that are ignored by default
-    // and those that have been configured to be ignored by the user.
-    // ESLint returns them as a one-warning result with message contents
-    // that have been stable since the warnings have been introduced.
-    // @see https://github.com/eslint/eslint/blame/HEAD/lib/cli-engine/cli-engine.js#L292-L298
-    if (
-      issue.severity === IssueSeverity.Warning &&
-      issue.message.match(/^File ignored\b/)
-    ) return []
-
-    // Suppress parsing errors from file types not supposed to be linted.
-    // Essentially, we weed out fatal parsing errors that stem from non-JS files.
-    // This might suppress some plugins’ errors on malformed input.
-    if (
-      issue.severity === IssueSeverity.Error &&
-      issue.code == null &&
-      !document.syntax.match(/\bjavascript\b/i)
-    ) return []
-  }
-
-  return issues
-}
-
-/**
  * Launch a lint operation, if possible.
  * Because lint operations are asynchronous and their duration can
  * vary widely depending on how busy the system is, we need to ensure
@@ -154,10 +123,10 @@ async function maybeLint (editor) {
     // Drop results that ended out of order in the queue.
     if (queue[uri].lastEnded < index) {
       queue[uri].lastEnded = index
-      collection.set(uri, filterIssues(results, doc))
+      updateIssues(collection, filterIssues(results, doc), doc)
     }
   } catch (error) {
-    collection.remove(uri)
+    updateIssues(collection, null, doc)
     console.error(error)
   }
 
