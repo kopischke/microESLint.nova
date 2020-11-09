@@ -72,37 +72,19 @@ function throttled (since) {
 }
 
 /**
- * Get or create an ESLint instance for a document path.
+ * Get or create an ESLint instance for an ESLint config.
  * @returns {?object} An ESLint instance, if a valid config and binary path were found.
- * @param {string} docPath - The path to a document to lint.
+ * @param {string} config - The path to the ESLint config.
  */
-async function getLinter (docPath) {
-  const config = ESLint.config(docPath)
-  if (config == null) return null
+async function getLinter (config) {
+  const bin = binaries.which
+  const cwd = nova.path.dirname(config)
+  const opts = { args: ['eslint'], cwd: cwd, shell: true }
 
-  // A `null` ESLint instance should only be present on the very first attempt,
-  // or when neither a global nor a local install is found. We always search for
-  // a binary in the former case (throttling does not happen on `null` timestamps),
-  // but throttle searches in the latter case, so as to not tax the user’s system.
-  // We do not throttle a search when the provided binary is not valid, as that can
-  // only happen when it has been deinstalled or disabled in the meantime and the
-  // first search will either set it to a new valid ESLint instance, or to `null`.
-  if (linters[config] == null) linters[config] = { eslint: null, lastUpdated: null }
-  let eslint = linters[config].eslint
-  const since = linters[config].lastUpdated
-  if ((eslint == null && !throttled(since)) || !eslint.valid) {
-    const bin = binaries.which
-    const cwd = nova.path.dirname(config)
-    const opts = { args: ['eslint'], cwd: cwd, shell: true }
+  const { code, stderr, stdout } = await runAsync(bin, opts)
 
-    const { code, stderr, stdout } = await runAsync(bin, opts)
-
-    if (stderr.length) console.error(stderr)
-    eslint = code === 0 ? new ESLint(stdout.split('\n')[0]) : null
-    linters[config] = { eslint: eslint, lastUpdated: Date.now() }
-  }
-
-  return eslint
+  if (stderr.length) console.error(stderr)
+  return code === 0 ? new ESLint(stdout.split('\n')[0]) : null
 }
 
 /**
@@ -126,18 +108,53 @@ async function maybeLint (editor) {
   const uri = doc.uri
   const path = doc.path
 
+  const config = ESLint.config(path)
+  if (config == null) return []
+
   // We need Node (both for npm-which and eslint).
   // To not flood the user’s system with searches, we throttle them
   // (the original `null` timestamp ensures we always do the first pass).
-  const since = state.nodeInstall.lastChecked
-  if (!state.nodeInstall.found && !throttled(since)) {
+  if (!state.nodeInstall.found && !throttled(state.nodeInstall.lastChecked)) {
     state.nodeInstall.found = await findInPATH('node')
     state.nodeInstall.lastChecked = Date.now()
   }
   if (!state.nodeInstall.found) return []
 
-  const linter = await getLinter(path)
-  if (linter == null) return []
+  // A `null` ESLint instance should only be present on the very first attempt,
+  // or when neither a global nor a local install is found. We always search for
+  // a binary in the former case (throttling does not happen on `null` timestamps),
+  // but throttle searches in the latter case, so as to not tax the user’s system.
+  // We do not throttle a search when the provided binary is not valid, as that can
+  // only happen when it has been deinstalled or disabled in the meantime and the
+  // first search will either set it to a new valid ESLint instance, or to `null`.
+  if (linters[config] == null) linters[config] = { eslint: null, lastUpdated: null }
+  let eslint = linters[config].eslint
+  const throttle = throttled(linters[config].lastUpdated)
+  if ((eslint == null && !throttle) || !eslint.valid) {
+    linters[config].updating = true
+    try {
+      eslint = await getLinter(config)
+      linters[config].eslint = eslint
+      linters[config].lastUpdated = Date.now()
+    } finally {
+      linters[config].updating = false
+    }
+  } else if (!linters[config].updating && !throttle) {
+    // Asynchronous update check to catch new project-local installs
+    // that would otherwise be shadowed by a global ESLint install.
+    getLinter(config)
+      .then(linter => {
+        const update = () => {
+          linters[config].eslint = linter
+          linters[config].lastUpdated = Date.now()
+        }
+        if ((linter == null) !== (eslint == null)) update()
+        if (linter != null && eslint != null && linter.binary !== eslint.binary) update()
+      })
+      .catch(console.error)
+      .finally(_ => { linters[config].updating = false })
+  }
+  if (eslint == null) return []
 
   // Because lint operations are asynchronous and their duration can
   // vary widely depending on how busy the system is, we need to ensure
@@ -146,7 +163,7 @@ async function maybeLint (editor) {
   if (queue[uri] == null) queue[uri] = { lastStarted: 1, lastEnded: 0 }
   const index = queue[uri].lastStarted++
   try {
-    const results = await linter.lint(src, path)
+    const results = await eslint.lint(src, path)
     if (queue[uri].lastEnded < index) {
       queue[uri].lastEnded = index
       updateIssues(collection, filterIssues(results, doc), doc)
