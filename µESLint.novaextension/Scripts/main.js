@@ -72,17 +72,14 @@ function throttled (since) {
 }
 
 /**
- * Get or create an ESLint instance for an ESLint config.
- * @returns {?object} An ESLint instance, if a valid config and binary path were found.
- * @param {string} config - The path to the ESLint config.
+ * Get the ESLint instance responsible for files in a specified directory.
+ * @returns {?object} An ESLint instance, if a valid binary path was found.
+ * @param {string} dir - The path to the directory.
  */
-async function getLinter (config) {
+async function getLinter (dir) {
   const bin = binaries.which
-  const cwd = nova.path.dirname(config)
-  const opts = { args: ['eslint'], cwd: cwd, shell: true }
-
+  const opts = { args: ['eslint'], cwd: dir, shell: true }
   const { code, stderr, stdout } = await runAsync(bin, opts)
-
   if (stderr.length) console.error(stderr)
   return code === 0 ? new ESLint(stdout.split('\n')[0]) : null
 }
@@ -108,8 +105,7 @@ async function maybeLint (editor) {
   const uri = doc.uri
   const path = doc.path
 
-  const config = ESLint.config(path)
-  if (config == null) return []
+  if (ESLint.config(path) == null) return []
 
   // We need Node (both for npm-which and eslint).
   // To not flood the user’s system with searches, we throttle them
@@ -127,32 +123,33 @@ async function maybeLint (editor) {
   // We do not throttle a search when the provided binary is not valid, as that can
   // only happen when it has been deinstalled or disabled in the meantime and the
   // first search will either set it to a new valid ESLint instance, or to `null`.
-  if (linters[config] == null) linters[config] = { eslint: null, lastUpdated: null }
-  let eslint = linters[config].eslint
-  const throttle = throttled(linters[config].lastUpdated)
+  const dir = nova.path.dirname(path)
+  if (linters[dir] == null) linters[dir] = { eslint: null, lastUpdated: null }
+  let eslint = linters[dir].eslint
+  const throttle = throttled(linters[dir].lastUpdated)
   if ((eslint == null && !throttle) || !eslint.valid) {
-    linters[config].updating = true
+    linters[dir].updating = true
     try {
-      eslint = await getLinter(config)
-      linters[config].eslint = eslint
-      linters[config].lastUpdated = Date.now()
+      eslint = await getLinter(dir)
+      linters[dir].eslint = eslint
+      linters[dir].lastUpdated = Date.now()
     } finally {
-      linters[config].updating = false
+      linters[dir].updating = false
     }
-  } else if (!linters[config].updating && !throttle) {
+  } else if (!linters[dir].updating && !throttle) {
     // Asynchronous update check to catch new project-local installs
     // that would otherwise be shadowed by a global ESLint install.
-    getLinter(config)
+    getLinter(dir)
       .then(linter => {
         const update = () => {
-          linters[config].eslint = linter
-          linters[config].lastUpdated = Date.now()
+          linters[dir].eslint = linter
+          linters[dir].lastUpdated = Date.now()
         }
         if ((linter == null) !== (eslint == null)) update()
         if (linter != null && eslint != null && linter.binary !== eslint.binary) update()
       })
       .catch(console.error)
-      .finally(_ => { linters[config].updating = false })
+      .finally(_ => { linters[dir].updating = false })
   }
   if (eslint == null) return []
 
