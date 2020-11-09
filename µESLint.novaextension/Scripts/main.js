@@ -90,7 +90,7 @@ async function getLinter (docPath) {
   if (linters[config] == null) linters[config] = { eslint: null, lastUpdated: null }
   let eslint = linters[config].eslint
   const since = linters[config].lastUpdated
-  if ((eslint == null && !throttled(since)) || !nova.fs.access(eslint, nova.fs.X_OK)) {
+  if ((eslint == null && !throttled(since)) || !eslint.valid) {
     const bin = binaries.which
     const cwd = nova.path.dirname(config)
     const opts = { args: ['eslint'], cwd: cwd, shell: true }

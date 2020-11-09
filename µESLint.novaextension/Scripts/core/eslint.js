@@ -13,7 +13,10 @@ class ESLint {
    */
   constructor (binPath) {
     const _path = nova.path.normalize(binPath)
-    Object.defineProperties(this, { binary: { get: () => _path } })
+    Object.defineProperties(this, {
+      binary: { get: () => _path },
+      valid: { get: () => nova.fs.access(_path, nova.fs.X_OK) }
+    })
   }
 
   /**
