@@ -6,17 +6,19 @@ const { prefixCommand } = require('../lib/extension')
 const { notify } = require('../lib/utils')
 
 /**
- * Open an ESLint file relevant for a TextEditor.
- * @param {string} what - The file to open: one of “config” or “ignore”.
+ * Open the ESLint file(s) relevant to a TextEditor.
+ * @param {string} what - The type of file(s) to open: one of “config” or “ignore”.
  * @param {object} editor - The TextEditor context.
  */
 exports.open = function (what, editor) {
   const id = `${prefixCommand()}.open-${what}`
   const path = editor.document.path || nova.workspace.path
   if (path) {
-    const target = ESLint[what](path)
-    if (target) {
-      nova.workspace.openFile(target)
+    const args = what === 'config' ? [path, true] : [path]
+    const files = ESLint[what](...args)
+    if (files != null) {
+      const open = [].concat(files)
+      open.forEach(file => { nova.workspace.openFile(file) })
     } else {
       notify(id, nova.localize(`${id}.msg.no-match`))
     }

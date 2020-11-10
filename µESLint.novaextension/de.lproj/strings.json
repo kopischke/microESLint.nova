@@ -7,7 +7,7 @@
   "eslint.opts.disable.title": "ESLint deaktivieren",
   "eslint.opts.disable.description": "Schaltet die ESLint-Fehlerüberprüfung für das Projekt ganz aus.",
 
-  "eslint.cmd.open-config.title": "ESLint-Konfiguration öffnen …",
+  "eslint.cmd.open-config.title": "ESLint-Konfiguration(en) öffnen …",
   "eslint.cmd.open-config.msg.no-path": "Die Datei, für die eine ESLint-Konfiguration gesucht wurde, ist bisher nicht gespeichert worden. ESLint kann keine Konfiguration für unegspeicherte Dateien bestimmen.",
   "eslint.cmd.open-config.msg.no-match": "Für diesen Dateipfad kann keine ESLint-Konfiguration gefunden werden.",
   "eslint.cmd.open-ignore.title": "ESLint-Ausschlussdatei öffnen …",

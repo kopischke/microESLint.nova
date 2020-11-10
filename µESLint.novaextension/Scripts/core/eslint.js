@@ -20,7 +20,7 @@ class ESLint {
   }
 
   /**
-   * Get the ESLint config or ignore file relevant for a file path.
+   * Get the ESLint config or ignore file closest to a file path.
    * Will look upwards through directories until it either finds a configuration
    * file or it reaches the user’s home directory.
    * @returns {?string} The path to the ESLint configuration file (if any).
@@ -56,14 +56,15 @@ class ESLint {
   }
 
   /**
-   * Check there is an ESLint configuration for a path.
+   * Find the ESLint configuration file(s) for a path.
    * ESLint configuration file format precedence will be respected.
    * @see {@link https://eslint.org/docs/user-guide/configuring#configuration-file-formats}
-   * @returns {?string} The path to the ESLint configuration file (if any).
+   * @returns {?Array.<string>} The paths to the ESLint configuration file (if any).
    * @param {string} forPath – The path to check.
+   * @param {boolean} [all=false] - Whether to find all config files in the hierarchy.
    */
-  static config (forPath) {
-    const files = [
+  static config (forPath, all) {
+    const names = [
       '.eslintrc.js',
       '.eslintrc.cjs',
       '.eslintrc.yaml',
@@ -71,11 +72,23 @@ class ESLint {
       '.eslintrc.json',
       '.eslintrc'
     ]
-    return ESLint._getConfig(forPath, files, 'eslintConfig')
+
+    const files = []
+    let found, lastPath
+    let path = forPath
+    do {
+      found = ESLint._getConfig(path, names, 'eslintConfig')
+      if (found != null) files.push(found)
+      if (!all) break
+      lastPath = path
+      path = nova.path.dirname(nova.path.dirname(found))
+    } while (found != null && path !== lastPath)
+
+    return files.length ? files : null
   }
 
   /**
-   * Check there is an ESLint ignore file for a path.
+   * Find the ESLint ignore file for a path.
    * @returns {?string} The path to the ESLint ignore file (if any).
    * @param {string} forPath – The path to check.
    */

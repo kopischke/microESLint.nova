@@ -7,7 +7,7 @@
  "eslint.opts.disable.title": "Disable ESLint",
  "eslint.opts.disable.description": "Switches off all ESLint based linting for the workspace.",
 
- "eslint.cmd.open-config.title": "Open ESLint Config…",
+ "eslint.cmd.open-config.title": "Open ESLint Config(s)…",
  "eslint.cmd.open-config.msg.no-path": "The file an ESLint configuration was searched for has not been saved yet. ESLint cannot determine the configuration for unsaved files.",
  "eslint.cmd.open-config.msg.no-match": "No ESLint configuration found for this file path.",
  "eslint.cmd.open-ignore.title": "Open ESLint Ignore file…",
