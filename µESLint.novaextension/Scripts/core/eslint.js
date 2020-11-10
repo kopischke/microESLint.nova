@@ -20,38 +20,34 @@ class ESLint {
   }
 
   /**
-   * Check there is an ESLint configuration for a path.
+   * Get the ESLint config or ignore file relevant for a file path.
    * Will look upwards through directories until it either finds a configuration
-   * file or it reaches the user’s home directory. ESLint configuration file
-   * format priorities are respected.
-   * @see {@link https://eslint.org/docs/user-guide/configuring#configuration-file-formats}
+   * file or it reaches the user’s home directory.
    * @returns {?string} The path to the ESLint configuration file (if any).
    * @param {string} forPath – The path to check.
+   * @param {string|Array.<string>} configFileNames - An ordered set of config file
+   * name(s) to look for. The first item in the list that is found will be returned.
+   * @param {?string} packageSection - The package.json section to look for. If
+   * provided, package.json files are checked automatically (no need to add them
+   * to the `configFileNames` list) as the last item.
+   * @private
    */
-  static config (forPath) {
+  static _getConfig (forPath, configFileNames, packageSection) {
     const home = homePath()
-    const legal = [
-      '.eslintrc.js',
-      '.eslintrc.cjs',
-      '.eslintrc.yaml',
-      '.eslintrc.yml',
-      '.eslintrc.json',
-      '.eslintrc.js',
-      '.eslintrc',
-      'package.json'
-    ]
+    const names = [].concat(configFileNames)
+    if (packageSection) names.push('package.json')
 
     let dir = nova.path.normalize(forPath)
     if (nova.fs.stat(dir).isFile()) dir = nova.path.dirname(dir)
+    if (!dir.startsWith(home)) return null
 
     do {
-      const files = nova.fs.listdir(dir)
-      const found = legal.filter(name => files.includes(name))
-      if (found.length) {
-        const conf = found[0]
-        const file = nova.path.join(dir, conf)
-        if (conf.startsWith('.eslintrc')) return file
-        if (requireJSON(file).eslintConfig) return file
+      const inDir = nova.fs.listdir(dir)
+      const found = names.find(name => inDir.includes(name))
+      if (found) {
+        const file = nova.path.join(dir, found)
+        if (found !== 'package.json') return file
+        if (packageSection && requireJSON(file)[packageSection]) return file
       }
       dir = nova.path.dirname(dir)
     } while (dir !== home)
@@ -60,26 +56,31 @@ class ESLint {
   }
 
   /**
+   * Check there is an ESLint configuration for a path.
+   * ESLint configuration file format precedence will be respected.
+   * @see {@link https://eslint.org/docs/user-guide/configuring#configuration-file-formats}
+   * @returns {?string} The path to the ESLint configuration file (if any).
+   * @param {string} forPath – The path to check.
+   */
+  static config (forPath) {
+    const files = [
+      '.eslintrc.js',
+      '.eslintrc.cjs',
+      '.eslintrc.yaml',
+      '.eslintrc.yml',
+      '.eslintrc.json',
+      '.eslintrc'
+    ]
+    return ESLint._getConfig(forPath, files, 'eslintConfig')
+  }
+
+  /**
    * Check there is an ESLint ignore file for a path.
-   * Will look upwards through directories until it either finds a configuration
-   * file or it reaches the user’s home directory.
    * @returns {?string} The path to the ESLint ignore file (if any).
    * @param {string} forPath – The path to check.
    */
   static ignore (forPath) {
-    const home = homePath()
-    const file = '.eslintignore'
-
-    let dir = nova.path.normalize(forPath)
-    if (nova.fs.stat(dir).isFile()) dir = nova.path.dirname(dir)
-
-    do {
-      const found = nova.fs.listdir(dir).includes(file)
-      if (found.length) return nova.path.join(dir, found[0])
-      dir = nova.path.dirname(dir)
-    } while (dir !== home)
-
-    return null
+    return ESLint._getConfig(forPath, '.eslintignore', 'eslintIgnore')
   }
 
   /**
