@@ -136,9 +136,11 @@ async function maybeLint (editor) {
     } finally {
       linters[dir].updating = false
     }
-  } else if (!linters[dir].updating && !throttle) {
-    // Asynchronous update check to catch new project-local installs
-    // that would otherwise be shadowed by a global ESLint install.
+  }
+
+  // Asynchronous update check to catch new project-local installs
+  // that would otherwise be shadowed by a global ESLint install.
+  if (eslint != null && !linters[dir].updating && !throttle) {
     getLinter(dir)
       .then(linter => {
         const update = () => {
@@ -151,6 +153,7 @@ async function maybeLint (editor) {
       .catch(console.error)
       .finally(_ => { linters[dir].updating = false })
   }
+
   if (eslint == null) return []
 
   // Because lint operations are asynchronous and their duration can
