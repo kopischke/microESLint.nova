@@ -1,5 +1,8 @@
 /**
  * @file Extension data not easily retrieved from the global `nova` object.
+ * @version 1.1.0
+ * @author Martin Kopischke <martin@kopischke.net>
+ * @license MIT
  */
 
 /**
