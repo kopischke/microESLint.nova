@@ -234,20 +234,43 @@ function registerConfigListeners () {
 
 /**
  * Register TextEditor listeners.
+ * Because we piggyback on the Issue AssistantRegistry, but do not
+ * actually use it, we do not fully participate in the teardown part
+ * of its excellent event setup.
  */
 function registerEditorListeners () {
-  // There is a race condition where TextEditor destructions while linting
-  // lead to zombie issues. We can’t resolve that inside the linting operation,
-  // because that always has a valid editor context (and hence an open document).
   nova.workspace.onDidAddTextEditor(added => {
+    // Clear issues when a document is closed. We can’t do that inside
+    // the linting operation, because that always has a valid editor
+    // context (and hence an open document).
     added.onDidDestroy(destroyed => {
       const doc = destroyed.document
       const uri = doc.uri
       if (documentIsClosed(doc)) {
         if (collection.has(uri)) collection.remove(uri)
       } else {
+        // There is a race condition where a very rapid change just before
+        // a TextEditor containing the document is destroyed leaves the
+        // collection for that document in the wrong state.
         maybeLint(documentIsOpenInEditors(doc)[0])
       }
+    })
+
+    // Catch file rename operations on save, which for Nova means:
+    // 1. closing the old document 2. opening the new document.
+    // 1. needs handling as above, 2. will fire a change event for the
+    // editor(s) containing the renamed file, but copying the issues over
+    // will stop them flickering in and out of existence in the Issues pane.
+    added.onWillSave(willSave => {
+      const oldURI = willSave.document.uri
+      const once = willSave.onDidSave(didSave => {
+        const newURI = didSave.document.uri
+        if (newURI !== oldURI && collection.has(oldURI)) {
+          collection.set(newURI, collection.get(oldURI))
+          if (!findDocumentByURI(oldURI)) collection.remove(oldURI)
+        }
+        once.dispose()
+      })
     })
   })
 }
