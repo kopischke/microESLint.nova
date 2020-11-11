@@ -4,11 +4,11 @@
 const { findInPATH, makeExecutable } = require('./core/binaries')
 const cmds = require('./core/commands')
 const { ESLint } = require('./core/eslint')
-const { filterIssues, updateIssues } = require('./core/issues')
+const { changedIssues, filterIssues } = require('./core/issues')
 
 const ext = require('./lib/extension')
 const { runAsync } = require('./lib/process')
-const { getDocumentText } = require('./lib/utils')
+const { documentIsClosed, documentIsOpenInEditors, getDocumentText } = require('./lib/utils')
 
 /**
  * Configuration keys.
@@ -90,6 +90,11 @@ async function getLinter (dir) {
  * @param {object} editor - The TextEditor to lint.
  */
 async function maybeLint (editor) {
+  const noIssues = (uri) => {
+    if (collection.has(uri)) collection.remove(uri)
+    return []
+  }
+
   if (nova.workspace.config.get(configKeys.disabled)) {
     collection.clear()
     return []
@@ -98,14 +103,13 @@ async function maybeLint (editor) {
   // Do not lint documents we cannot walk the directory hierarchy of;
   // however, we do lint empty documents, in case some rule covers that.
   const doc = editor.document
-  if (doc.isUntitled || doc.isRemote) return []
+  const uri = doc.uri
+  const path = doc.path
+  if (doc.isUntitled || doc.isRemote) return noIssues(uri)
 
   // Get this early, there can be race conditions.
   const src = getDocumentText(doc)
-  const uri = doc.uri
-  const path = doc.path
-
-  if (ESLint.config(path) == null) return []
+  if (ESLint.config(path) == null) return noIssues(uri)
 
   // We need Node (both for npm-which and eslint).
   // To not flood the user’s system with searches, we throttle them
@@ -114,7 +118,7 @@ async function maybeLint (editor) {
     state.nodeInstall.found = await findInPATH('node')
     state.nodeInstall.lastChecked = Date.now()
   }
-  if (!state.nodeInstall.found) return []
+  if (!state.nodeInstall.found) return noIssues(uri)
 
   // A `null` ESLint instance should only be present on the very first attempt,
   // or when neither a global nor a local install is found. We always search for
@@ -154,7 +158,7 @@ async function maybeLint (editor) {
       .finally(_ => { linters[dir].updating = false })
   }
 
-  if (eslint == null) return []
+  if (eslint == null) return noIssues(uri)
 
   // Because lint operations are asynchronous and their duration can
   // vary widely depending on how busy the system is, we need to ensure
@@ -166,10 +170,16 @@ async function maybeLint (editor) {
     const results = await eslint.lint(src, path)
     if (queue[uri].lastEnded < index) {
       queue[uri].lastEnded = index
-      updateIssues(collection, filterIssues(results, doc), doc)
+      if (documentIsClosed(doc)) {
+        noIssues(uri)
+      } else {
+        const issues = filterIssues(results, doc)
+        const changed = changedIssues(collection.get(uri), issues)
+        if (changed) collection.set(uri, issues)
+      }
     }
   } catch (error) {
-    updateIssues(collection, null, doc)
+    noIssues(uri)
     console.error(error)
   }
 
@@ -218,6 +228,26 @@ function registerConfigListeners () {
 }
 
 /**
+ * Register TextEditor listeners.
+ */
+function registerEditorListeners () {
+  // There is a race condition where TextEditor destructions while linting
+  // lead to zombie issues. We can’t resolve that inside the linting operation,
+  // because that always has a valid editor context (and hence an open document).
+  nova.workspace.onDidAddTextEditor(added => {
+    added.onDidDestroy(destroyed => {
+      const doc = destroyed.document
+      const uri = doc.uri
+      if (documentIsClosed(doc)) {
+        if (collection.has(uri)) collection.remove(uri)
+      } else {
+        maybeLint(documentIsOpenInEditors(doc)[0])
+      }
+    })
+  })
+}
+
+/**
  * Initialise the extension in the workspace.
  * Inform user of errors while activating (once only).
  */
@@ -225,9 +255,10 @@ exports.activate = async function () {
   try {
     await makeExecutable(Object.values(binaries))
     updateConfig()
-    registerAssistant()
     registerCommands()
     registerConfigListeners()
+    registerEditorListeners()
+    registerAssistant()
   } catch (error) {
     console.error(error)
     if (!nova.inDevMode() && !state.activationErrorHandled) {

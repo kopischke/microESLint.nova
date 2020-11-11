@@ -1,12 +1,11 @@
 /**
  * @file Core extension issues functionality.
  */
-const { documentIsClosed } = require('../lib/utils')
 
 /**
  * Filter out ESLint issues that are not source code issues.
  * @returns {Array.<?object>} An array of {@link Issue} objects.
- * @param {Array.<?object>} issues - The issues to filter.
+ * @param {Array.<?object>} issues - The {@link Issue}s to filter.
  * @param {object} document - The {@link TextDocument} the issues apply to.
  */
 exports.filterIssues = function (issues, document) {
@@ -37,31 +36,16 @@ exports.filterIssues = function (issues, document) {
 }
 
 /**
- * Ensure a correct issue collection update.
- * To reduce flickering and wandering issue listing when multiple
- * plugins update collections, we only update when there are actual
- * changes. Also, we check the document is still open before updating,
- * to make sure we don’t create zombie Issues from async linting operations.
- * @returns {number} The number of issues set in the update.
- * @param {object} collection - The {@link IssueCollection} to update.
- * @param {Array.<?object>} issues - The incoming {@link Issue}s.
- * @param {object} document - document - The {@link TextDocument} the issues apply to.
+ * Checks if an issue set differs from the known one.
+ * @returns {boolean} Whether the issue sets differ.
+ * @param {Array.<?object>} known - The known {@link Issue} set to check against.
+ * @param {Array.<?object>} incoming - The incoming {@link Issue} set to check.
  */
-exports.updateIssues = function (collection, issues, document) {
-  const uri = document.uri
-  if (issues == null || issues.length === 0 || documentIsClosed(document)) {
-    if (collection.has(uri)) collection.remove(uri)
-    return 0
-  }
+exports.changedIssues = function (known, incoming) {
+  if (known.length !== incoming.length) return true
 
-  const knownIssues = collection.get(uri)
-  if (knownIssues.length !== issues.length) {
-    collection.set(uri, issues)
-    return issues.length
-  }
-
-  const hasChanges = issues.find(issue => {
-    const known = knownIssues.find(knownIssue => {
+  return incoming.some(issue => {
+    return !known.some(knownIssue => {
       return (
         knownIssue.message === issue.message &&
         knownIssue.code === issue.code &&
@@ -72,13 +56,5 @@ exports.updateIssues = function (collection, issues, document) {
         knownIssue.severity === issue.severity
       )
     })
-    return known == null
   })
-
-  if (hasChanges) {
-    collection.set(uri, issues)
-    return issues.length
-  }
-
-  return 0
 }
