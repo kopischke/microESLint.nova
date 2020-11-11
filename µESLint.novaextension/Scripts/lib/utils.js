@@ -1,30 +1,9 @@
 /**
- * @file Utility methods for boilerplate poorer extensions.
- * @version 1.1.0
+ * @file General utility methods for boilerplate poorer extensions.
+ * @version 2.0.0
  * @author Martin Kopischke <martin@kopischke.net>
  * @license MIT
  */
-
-/**
- * Shim for the `TextDocument.isClosed` instance method; as of Nova 2,
- * that always returns true, even in a `TextEditor.onDidDestroy` callback.
- * @returns {boolean} Whether the document isn’t open in any editor.
- * @param {object} document - The {@link TextDocument} to check.
- */
-exports.documentIsClosed = function (document) {
-  const uri = document.uri
-  return !nova.workspace.textEditors.some(e => e.document.uri === uri)
-}
-
-/**
- * Get all editors in the workspace in which a TextDocument is open.
- * @returns {Array.<object>} All TextEditor instances the document is open in.
- * @param {object} document - The {@link TextDocument} to check.
- */
-exports.documentIsOpenInEditors = function (document) {
-  const uri = document.uri
-  return nova.workspace.textEditors.filter(e => e.document.uri === uri)
-}
 
 /**
  * Get the locally valid configuration setting (workspace if set, else global).
@@ -36,17 +15,6 @@ exports.documentIsOpenInEditors = function (document) {
 exports.getLocalConfig = function (key, type) {
   const local = nova.workspace.config.get(key, type)
   return local != null ? local : nova.config.get(key, type)
-}
-
-/**
- * Get the full text contents of a document.
- * @returns {string} The document text.
- * @param {object} document - The {@link TextDocument} whose text should be retrieved.
- */
-exports.getDocumentText = function (document) {
-  return document.isEmpty
-    ? ''
-    : document.getTextInRange(new Range(0, document.length))
 }
 
 /**

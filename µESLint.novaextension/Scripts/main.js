@@ -6,9 +6,14 @@ const cmds = require('./core/commands')
 const { ESLint } = require('./core/eslint')
 const { changedIssues, filterIssues } = require('./core/issues')
 
+const {
+  documentIsClosed,
+  documentIsOpenInEditors,
+  findDocumentByURI,
+  getDocumentText
+} = require('./lib/document')
 const ext = require('./lib/extension')
 const { runAsync } = require('./lib/process')
-const { documentIsClosed, documentIsOpenInEditors, getDocumentText } = require('./lib/utils')
 
 /**
  * Configuration keys.
