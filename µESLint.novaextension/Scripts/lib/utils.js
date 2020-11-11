@@ -5,14 +5,12 @@
 /**
  * Shim for the `TextDocument.isClosed` instance method; as of Nova 2,
  * that always returns true, even in a `TextEditor.onDidDestroy` callback.
- * @returns {boolean} Whether the document is open in at least one editor.
+ * @returns {boolean} Whether the document isn’t open in any editor.
  * @param {object} document - The {@link TextDocument} to check.
  */
 exports.documentIsClosed = function (document) {
-  const open = nova.workspace.textEditors.find(
-    item => item.document.uri === document.uri
-  )
-  return open == null
+  const uri = document.uri
+  return !nova.workspace.textEditors.some(e => e.document.uri === uri)
 }
 
 /**
@@ -21,9 +19,8 @@ exports.documentIsClosed = function (document) {
  * @param {object} document - The {@link TextDocument} to check.
  */
 exports.documentIsOpenInEditors = function (document) {
-  return nova.workspace.textEditors.filter(
-    item => item.document.uri === document.uri
-  )
+  const uri = document.uri
+  return nova.workspace.textEditors.filter(e => e.document.uri === uri)
 }
 
 /**
