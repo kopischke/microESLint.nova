@@ -18,7 +18,7 @@ _µESLint_ has exactly one feature: if the ESLint CLI would lint a file you have
 
 Uh, well, actually there is a sort of a second feature: it has commands to open the ESLint configuration and ignore files that are pertinent to a source file in the Editor menu.
 
-So: one and a half features. And all of it should work reliably, everywhere, with no config outside the one you have to set up for ESLint itself. Should you find it does not, [holler](https://github.com/kopischke/microESLint.nova/issues).
+So: one and a half features. And all of it should work reliably, everywhere, with no config outside the one you have to set up for ESLint itself. Should you find it does not, please refer to the “Known issues“ section below.
 
 ## Requirements
 
@@ -37,3 +37,12 @@ Once this is done, you need to configure ESLint. Please refer to the ESLint User
 ## Configuration
 
 You can disable _µESLint_ on a per-project basis in project settings, and there is a shortcut to get there in the Extensions menu. That’s it. Configure ESLint, not the extension.
+
+## Known issues
+
+… as in issues of this extension (this is, ahem, the issue with a linting extension: the terminology can get a wee bit confusing):
+
+1. Currently, Nova’s Issues pane will not display an entry for documents whose path or name has changed outside a “Save as…” operation (be it through renaming in the Nova sidebar, or through the Finder or a CLI). The document gets linted – you will find issue entries in its margin –, but the Issues pane never tells you about it. This is a Nova bug ([Nova’s internal IssueCollection managed by the AssistantRegistry](https://docs.nova.app/api-reference/assistants-registry/#registerissueassistant-selector-object-options) is affected the same way) I have found no workaround for.
+2. The “Open ESLint Config…” does not respect the `root: true` setting, always opening [all files in the hierarchy](https://eslint.org/docs/user-guide/configuring#configuration-cascading-and-hierarchy) instead. Solving this would mean parsing configuration files in multiple languages, among them YAML, and is unlikely to ever happen.
+
+Should you encounter other problems, kindly describe them in [a Github issue](https://github.com/kopischke/microESLint.nova/issues).
