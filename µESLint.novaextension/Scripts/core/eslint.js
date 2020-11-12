@@ -37,12 +37,12 @@ class ESLint {
     const names = [].concat(configFileNames)
     if (packageSection) names.push('package.json')
 
-    let dir = nova.path.normalize(forPath)
-    if (nova.fs.stat(dir).isFile()) dir = nova.path.dirname(dir)
+    const path = nova.path.normalize(forPath)
+    let dir = nova.fs.stat(path).isFile() ? nova.path.dirname(path) : path
     if (!dir.startsWith(home)) return null
 
     do {
-      const inDir = nova.fs.listdir(dir)
+      const inDir = nova.fs.listdir(dir).map(name => name.toLowerCase())
       const found = names.find(name => inDir.includes(name))
       if (found) {
         const file = nova.path.join(dir, found)
