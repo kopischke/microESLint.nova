@@ -18,7 +18,6 @@ const { runAsync } = require('./lib/process')
 /**
  * Configuration keys.
  * @property {boolean} disabled - The “Disable ESLint” workspace option.
- * @property {string} binpath - The cached `eslint` binary path.
  */
 const configKeys = {
   disabled: `${ext.prefixConfig()}.disable`
