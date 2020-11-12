@@ -1,3 +1,13 @@
+## Version 1.2.0
+
+Improvements to, and fixes for the commands for opening ESLint files.
+
+**Fixed**
+
+- The “Open ESLint Config file(s)…” command did not stop at [config files with `root: true`](https://eslint.org/docs/user-guide/configuring#using-configuration-files-1).
+- The “Open ESLint Config file(s)…” and “Open ESLint Ignore file…” commands would not correctly handle being called from an editor containing a file of the matching type.
+
+
 ## Version 1.1.0
 
 This release’s tentpole feature is support for project local ESLint installs (i.e. those you get with `npm install` without the `-g` flag, or `yarn add`). Local installs will be picked up automatically, in preference to a global install, not just at extension startup but anytime you add them to the mix. Besides this, this release also features a lot of under-the-hood improvements and fixes to ensure linting is as smooth and reliable as possible, and that all aspects of ESLint integration conform to the behaviour you would expect from it outside of Nova.
