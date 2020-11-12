@@ -47,7 +47,12 @@ class ESLint {
       if (found) {
         const file = nova.path.join(dir, found)
         if (found !== 'package.json') return file
-        if (packageSection && requireJSON(file)[packageSection]) return file
+        if (packageSection) {
+          const pkg = requireJSON(file)
+          if (pkg != null && typeof pkg === 'object' && packageSection in pkg) {
+            return file
+          }
+        }
       }
       dir = nova.path.dirname(dir)
     } while (dir !== home)
