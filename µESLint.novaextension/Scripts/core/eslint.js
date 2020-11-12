@@ -66,9 +66,8 @@ class ESLint {
    * @see {@link https://eslint.org/docs/user-guide/configuring#configuration-file-formats}
    * @returns {?Array.<string>} The paths to the ESLint configuration file (if any).
    * @param {string} forPath – The path to check.
-   * @param {boolean} [all=false] - Whether to find all config files in the hierarchy.
    */
-  static config (forPath, all) {
+  static config (forPath) {
     const names = [
       '.eslintrc.js',
       '.eslintrc.cjs',
@@ -77,19 +76,7 @@ class ESLint {
       '.eslintrc.json',
       '.eslintrc'
     ]
-
-    const files = []
-    let found, lastPath
-    let path = forPath
-    do {
-      found = ESLint._getConfig(path, names, 'eslintConfig')
-      if (found != null) files.push(found)
-      if (!all) break
-      lastPath = path
-      path = nova.path.dirname(nova.path.dirname(found))
-    } while (found != null && path !== lastPath)
-
-    return files.length ? files : null
+    return ESLint._getConfig(forPath, names, 'eslintConfig')
   }
 
   /**
