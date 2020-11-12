@@ -43,6 +43,5 @@ You can disable _µESLint_ on a per-project basis in project settings, and there
 … as in issues of this extension (this is, ahem, the issue with a linting extension: the terminology can get a wee bit confusing):
 
 1. Currently, Nova’s Issues pane will not display an entry for documents whose path or name has changed outside a “Save as…” operation (be it through renaming in the Nova sidebar, or through the Finder or a CLI). The document gets linted – you will find issue entries in its margin –, but the Issues pane never tells you about it. This is a Nova bug ([Nova’s internal IssueCollection managed by the AssistantRegistry](https://docs.nova.app/api-reference/assistants-registry/#registerissueassistant-selector-object-options) is affected the same way) I have found no workaround for.
-2. The “Open ESLint Config…” does not respect the `root: true` setting, always opening [all files in the hierarchy](https://eslint.org/docs/user-guide/configuring#configuration-cascading-and-hierarchy) instead. Solving this would mean parsing configuration files in multiple languages, among them YAML, and is unlikely to ever happen.
 
 Should you encounter other problems, kindly describe them in [a Github issue](https://github.com/kopischke/microESLint.nova/issues).
