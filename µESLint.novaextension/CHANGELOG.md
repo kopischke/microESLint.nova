@@ -1,6 +1,6 @@
 ## Version 1.2.0
 
-Improvements to, and fixes for the commands for opening ESLint files.
+Improvements to, and fixes for, the commands for opening ESLint files.
 
 **Fixed**
 
@@ -22,14 +22,14 @@ This release’s tentpole feature is support for project local ESLint installs (
 - The “Open ESLint Ignore file…” command would not open [package.json files with an `eslintIgnore` section](https://eslint.org/docs/user-guide/configuring#using-eslintignore-in-packagejson).
 - Several scenarios where issues would remain listed in the Issues pane when they should not:
     - Closing documents with issues would leave their issue set hanging around the Issues pane like a benign zombie infestation (you could re-open the document from there, but that was not expected behaviour).
-    - Saving documents with issues under a new name would leave a duplicate issue set hanging around the Issues pane (that one was more annoying kind of zombie, as you could not interact with it at all).
+    - Saving documents with issues under a new name would leave a duplicate issue set hanging around the Issues pane (that one was a more annoying kind of zombie, as you could not interact with it at all).
     - Closing an editor after a very fast set of changes did not update the issues for the document if it was still open in other editor panes (possibly a Nova bug).
     - Unloading the extension also sometimes left zombie issue sets hanging around (possibly a Nova bug).
 - Checking for missing binaries happened too frequently, potentially affecting the system’s responsiveness.
 
 **Caveat**
 
-Currently, Nova’s Issues pane will not display an entry for documents whose path or name has  changed outside a “Save as…” operation (be it through renaming in the Nova sidebar, or through the Finder or a CLI). The document gets linted – you will find issue entries in its margin –, but the Issues pane never tells you about it. This is a Nova bug ([Nova’s internal IssueCollection managed by the AssistantRegistry](https://docs.nova.app/api-reference/assistants-registry/#registerissueassistant-selector-object-options) is affected the same way) I have found no workaround for.
+Currently, Nova’s Issues pane will not display an entry for documents whose path or name has  changed while open, if that happened otherwise than through a “Save as…” operation (e.g. through renaming in the Nova sidebar, or through the Finder or a CLI). The document gets linted – you will find issue entries in its margin –, but the Issues pane never tells you about it. This is a Nova bug ([Nova’s internal IssueCollection managed by the AssistantRegistry](https://docs.nova.app/api-reference/assistants-registry/#registerissueassistant-selector-object-options) is affected the same way) I have found no workaround for.
 
 ## Version 1.0.0
 
