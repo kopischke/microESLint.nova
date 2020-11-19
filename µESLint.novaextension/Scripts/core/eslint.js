@@ -93,8 +93,10 @@ class ESLint {
    * @returns {Promise} Asynchronous issues collection.
    * @param {string} source - The source code to lint.
    * @param {string} path - The file path the source belongs to.
+   * @param {?string} cwd - The directory to run ESLint in (defaults to the
+   * directory containing the file to lint, i.e. `dirname(path)`).
    */
-  async lint (source, path) {
+  async lint (source, path, cwd) {
     const args = ['-f', 'json', '--stdin', '--stdin-filename', path]
 
     // Use caching if we can get hold of the temp directory.
@@ -106,8 +108,10 @@ class ESLint {
       console.warn(error)
     }
 
-    const cwd = nova.path.dirname(path) // plugins may fail when this is omitted
-    const opts = { args: args, cwd: cwd, shell: false }
+    // ESLint is rather finicky about from where it is run, as plugins
+    // and some parsers base their configuration on relative paths.
+    const dir = cwd || nova.path.dirname(path)
+    const opts = { args: args, cwd: dir, shell: false }
     const { code, stderr, stdout } = await runAsync(this.binary, opts, source)
     if (code > 1) {
       const error = new Error(stderr)

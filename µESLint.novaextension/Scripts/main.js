@@ -113,7 +113,8 @@ async function maybeLint (editor) {
 
   // Get this early, there can be race conditions.
   const src = getDocumentText(doc)
-  if (ESLint.config(path) == null) return noIssues(uri)
+  const config = ESLint.config(path)
+  if (config == null) return noIssues(uri)
 
   // We need Node (both for npm-which and eslint).
   // To not flood the user’s system with searches, we throttle them
@@ -171,7 +172,8 @@ async function maybeLint (editor) {
   if (queue[uri] == null) queue[uri] = { lastStarted: 1, lastEnded: 0 }
   const index = queue[uri].lastStarted++
   try {
-    const results = await eslint.lint(src, path)
+    const cwd = nova.path.dirname(config)
+    const results = await eslint.lint(src, path, cwd)
     if (queue[uri].lastEnded < index) {
       queue[uri].lastEnded = index
       if (documentIsClosed(doc)) {
