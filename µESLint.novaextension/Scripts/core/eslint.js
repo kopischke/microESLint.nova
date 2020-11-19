@@ -95,7 +95,8 @@ class ESLint {
    * @param {string} path - The file path the source belongs to.
    */
   async lint (source, path) {
-    const args = ['-f', 'json', '--stdin', '--stdin-filename', path]
+    const relativePath = nova.workspace.relativizePath(path)
+    const args = ['-f', 'json', '--stdin', '--stdin-filename', relativePath]
 
     // Use caching if we can get hold of the temp directory.
     // Failure to do so just slightly degrades performance,
@@ -106,7 +107,7 @@ class ESLint {
       console.warn(error)
     }
 
-    const cwd = nova.path.dirname(path) // plugins may fail when this is omitted
+    const cwd = nova.workspace.path; // plugins may fail when this is omitted
     const opts = { args: args, cwd: cwd, shell: false }
     const { code, stderr, stdout } = await runAsync(this.binary, opts, source)
     if (code > 1) {
