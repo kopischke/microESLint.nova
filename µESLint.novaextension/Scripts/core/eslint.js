@@ -107,7 +107,7 @@ class ESLint {
       console.warn(error)
     }
 
-    const cwd = nova.workspace.path; // plugins may fail when this is omitted
+    const cwd = nova.workspace.path // plugins may fail when this is omitted
     const opts = { args: args, cwd: cwd, shell: false }
     const { code, stderr, stdout } = await runAsync(this.binary, opts, source)
     if (code > 1) {
