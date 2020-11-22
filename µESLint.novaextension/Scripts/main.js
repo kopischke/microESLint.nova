@@ -44,7 +44,7 @@ const collection = new IssueCollection()
  */
 const state = {
   activationErrorHandled: false,
-  nodeInstall: { found: false, lastChecked: null }
+  nodeInstall: { path: null, lastChecked: null }
 }
 
 /**
@@ -116,8 +116,12 @@ async function getLinter (dir) {
  * Launch a lint operation, if possible.
  * @returns {boolean} Whether a lint operation was started.
  * @param {object} editor - The TextEditor to lint.
+ * @param {boolean} [retry=true] Whether to retry linting on execution errors.
+ * Currently, retries happens when either the eslint binary lookup or its
+ * execution proper fails and we need to reset the path values for it or Node.
+ * The retry attempts themselves set this to `false` as a loop breaker.
  */
-async function maybeLint (editor) {
+async function maybeLint (editor, retry) {
   const noIssues = (uri) => {
     if (collection.has(uri)) collection.remove(uri)
     return []
@@ -143,31 +147,38 @@ async function maybeLint (editor) {
   // We need Node (both for npm-which and eslint).
   // To not flood the user’s system with searches, we throttle them
   // (the original `null` timestamp ensures we always do the first pass).
-  if (!state.nodeInstall.found && !throttled(state.nodeInstall.lastChecked)) {
-    state.nodeInstall.found = await findInPATH('node')
+  // Also, because `access()` calls are slow, we do not check for the
+  // validity of a once found Node executable every time, but rely on it
+  // being reset when execution errors happen.
+  if (state.nodeInstall.path == null && !throttled(state.nodeInstall.lastChecked)) {
+    state.nodeInstall.path = await findInPATH('node')
     state.nodeInstall.lastChecked = Date.now()
   }
-  if (!state.nodeInstall.found) return noIssues(uri)
+  if (state.nodeInstall.path == null) return noIssues(uri)
 
   // A `null` ESLint instance should only be present on the very first attempt,
   // or when neither a global nor a local install is found. We always search for
   // a binary in the former case (throttling does not happen on `null` timestamps),
   // but throttle searches in the latter case, so as to not tax the user’s system.
-  // We do not throttle a search when the provided binary is not valid, as that can
-  // only happen when it has been deinstalled or disabled in the meantime and the
-  // first search will either set it to a new valid ESLint instance, or to `null`.
+  // Because the `access()` call underlying `ESLint.valid` is costly, we do not check
+  // before every operation; instead, we try again if a ProcessError' is thrown.
   const dir = nova.path.dirname(path)
   if (linters[dir] == null) linters[dir] = { eslint: null, lastUpdated: null }
   let eslint = linters[dir].eslint
   const throttle = throttled(linters[dir].lastUpdated)
-  if ((eslint == null && !throttle) || !eslint.valid) {
+  if (eslint == null && !throttle) {
     linters[dir].updating = true
     try {
       eslint = await getLinter(dir)
       linters[dir].eslint = eslint
       linters[dir].lastUpdated = Date.now()
-    } finally {
       linters[dir].updating = false
+    } catch (error) {
+      linters[dir].updating = false
+      console.error(error.message)
+      if (error.name === 'ShellError' && maybeVoidNode() && retry !== false) {
+        return maybeLint(editor, false)
+      }
     }
   }
 
@@ -184,7 +195,7 @@ async function maybeLint (editor) {
         if (linter != null && eslint != null && linter.binary !== eslint.binary) update()
       })
       .catch(console.error)
-      .finally(_ => { linters[dir].updating = false })
+      .finally(() => { linters[dir].updating = false })
   }
 
   if (eslint == null) return noIssues(uri)
@@ -209,11 +220,32 @@ async function maybeLint (editor) {
       }
     }
   } catch (error) {
-    noIssues(uri)
     console.error(error)
+    noIssues(uri)
+    if (error.name === 'ProcessError') {
+      const noNode = maybeVoidNode()
+      const noESLint = !eslint.valid
+      if (noESLint) linters[dir] = null
+      if ((noNode || noESLint) && retry !== false) return maybeLint(editor, false)
+    }
   }
 
   return []
+}
+
+/**
+ * Void our cached Node executable data if it is not valid anymore.
+ * We call this when node-dependent operations fail.
+ * @returns {boolean} Whether the cached data was voided.
+ */
+function maybeVoidNode () {
+  const node = state.nodeInstall.path
+  const voidNode = node != null && !nova.fs.access(node, nova.fs.X_OK)
+  if (voidNode) {
+    state.nodeInstall.path = null
+    state.nodeInstall.lastChecked = null
+  }
+  return voidNode
 }
 
 /**
