@@ -79,13 +79,37 @@ function throttled (since) {
  * Get the ESLint instance responsible for files in a specified directory.
  * @returns {?object} An ESLint instance, if a valid binary path was found.
  * @param {string} dir - The path to the directory.
+ * @throws {Error} 'ShellError' when executing `npm-which` fails.
  */
 async function getLinter (dir) {
   const bin = binaries.which
   const opts = { args: ['eslint'], cwd: dir, shell: true }
   const { code, stderr, stdout } = await runAsync(bin, opts)
-  if (stderr.length) console.error(stderr)
-  return code === 0 ? new ESLint(stdout.split('\n')[0]) : null
+
+  // Currently, `npm-which` has a few quirks we need to handle:
+  // - It always returns 0, even when it cannot locate an executable.
+  //   The only differentiator is that it prints a found executable’s
+  //   path on stdout, and a message on stderr when it doesn’t find anything.
+  // - But it shows usage info on stdout when no argument is passed.
+  // - And, of course, shells return diverse errors when the script itself
+  //   cannot be run, flavoured to the shell and hence unparseable.
+  if (code === 0 && stdout.length) {
+    const path = stdout.split('\n')[0]
+    if (nova.fs.access(path, nova.fs.X_OK)) return new ESLint(path)
+  } else if (code > 1) {
+    // We ignore code 1 as that code should never come from the shell itself,
+    // and it also future proofs us against `npm-which` getting more idiomatic.
+    if (nova.fs.access(bin, nova.fs.X_OK)) {
+      const error = new Error(`Exit code ${code}: ${stderr}`)
+      error.name = 'ShellError'
+      throw error
+    } else {
+      await makeExecutable(bin)
+      return getLinter(dir)
+    }
+  }
+
+  return null
 }
 
 /**
