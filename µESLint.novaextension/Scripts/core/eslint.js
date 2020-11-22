@@ -95,6 +95,7 @@ class ESLint {
    * @param {string} path - The file path the source belongs to.
    * @param {?string} cwd - The directory to run ESLint in (defaults to the
    * directory containing the file to lint, i.e. `dirname(path)`).
+   * @throws {Error} 'ProcessError' when running the eslint executable fails.
    */
   async lint (source, path, cwd) {
     const args = ['-f', 'json', '--stdin', '--stdin-filename', path]
@@ -114,7 +115,7 @@ class ESLint {
     const opts = { args: args, cwd: dir, shell: false }
     const { code, stderr, stdout } = await runAsync(this.binary, opts, source)
     if (code > 1) {
-      const error = new Error(stderr)
+      const error = new Error(`Exit code ${code}: ${stderr}`)
       error.name = 'ProcessError'
       throw error
     }
