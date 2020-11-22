@@ -18,7 +18,8 @@ exports.findInPATH = async function (binaries) {
  * Ensure binaries are executable.
  * @returns {number} The number of `chmod`ed binaries.
  * @param {string|Array.<string>} paths - The binary paths to check.
- * @throws {Error} When any of the extension binaries cannot be located.
+ * @throws {Error} When any of the extension binaries cannot be located
+ * or the `chmod` operation returns a code > 0.
  */
 exports.makeExecutable = async function (paths) {
   const nonexec = []
