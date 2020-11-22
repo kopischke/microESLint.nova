@@ -185,6 +185,7 @@ async function maybeLint (editor, retry) {
   // Asynchronous update check to catch new project-local installs
   // that would otherwise be shadowed by a global ESLint install.
   if (eslint != null && !linters[dir].updating && !throttle) {
+    linters[dir].updating = true
     getLinter(dir)
       .then(linter => {
         const update = () => {
