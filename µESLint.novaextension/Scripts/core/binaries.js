@@ -8,10 +8,30 @@ const { runAsync } = require('../lib/process')
  * @returns {boolean} Whether all binaries are found in the user’s $PATH.
  * @param {string|Array.<string>} binaries - The binary names to look for.
  */
-exports.findInPATH = async function (binaries) {
+exports.isInPATH = async function (binaries) {
   const opts = { args: ['-s'].concat(binaries), shell: true }
   const { code } = await runAsync('which', opts)
   return code === 0
+}
+
+/**
+ * Locate one or more binary files in the user’s $PATH.
+ * @returns {?string|Array.<?string>} Paths of the binaries found in the user’s $PATH.
+ * @param {string|Array.<string>} binaries - The binary names to look for.
+ */
+exports.findInPATH = async function (binaries) {
+  const bins = [].concat(binaries)
+  const opts = { args: bins, shell: true }
+  const { stdout } = await runAsync('which', opts)
+
+  let found = null
+  if (stdout.length) {
+    const paths = stdout.split('\n')
+    found = bins.map(bin => {
+      return paths.find(path => nova.path.basename(path) === bin || null)
+    })
+  }
+  return binaries.length === 1 ? found[0] : found
 }
 
 /**
