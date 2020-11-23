@@ -5,6 +5,7 @@ const { findInPATH, makeExecutable } = require('./core/binaries')
 const cmds = require('./core/commands')
 const { ESLint } = require('./core/eslint')
 const { changedIssues, filterIssues } = require('./core/issues')
+const { Updatable } = require('./core/updatable')
 
 const {
   documentIsClosed,
@@ -40,15 +41,15 @@ const collection = new IssueCollection()
 /**
  * Extension state.
  * @property {boolean} activationErrorHandled - Has an activation error been handled already?
- * @property {boolean} nodeInstall - Is node.js in the user’s path?
+ * @property {boolean} nodePath - The Updatable node.js executable path.
  */
 const state = {
   activationErrorHandled: false,
-  nodeInstall: { path: null, lastChecked: null }
+  nodePath: new Updatable()
 }
 
 /**
- * ESLint instances to use for linting.
+ * Updatable ESLint instances to use for linting.
  */
 const linters = {}
 
@@ -123,6 +124,21 @@ async function getLinter (dir) {
 }
 
 /**
+ * Update the ESLint instance responsible for files in a specified directory.
+ * @returns {object} Either the current or an updated ESLint instance.
+ * @param {string} dir - The path to the directory.
+ */
+async function updateLinter (dir) {
+  const current = linters[dir].value
+  const updated = await getLinter(dir)
+  if ((updated == null) !== (current == null)) return updated
+  if (updated != null && current != null && updated.binary !== current.binary) {
+    return updated
+  }
+  return current
+}
+
+/**
  * Launch a lint operation, if possible.
  * @returns {boolean} Whether a lint operation was started.
  * @param {object} editor - The TextEditor to lint.
@@ -155,11 +171,9 @@ async function maybeLint (editor, retry) {
   // Also, because `access()` calls are slow, we do not check for the
   // validity of a once found Node executable every time, but rely on it
   // being reset when execution errors happen.
-  if (state.nodeInstall.path == null && !throttled(state.nodeInstall.lastChecked)) {
-    state.nodeInstall.path = await findInPATH('node')
-    state.nodeInstall.lastChecked = Date.now()
-  }
-  if (state.nodeInstall.path == null) return noIssues(uri)
+  const node = state.nodePath
+  if (node.value == null && !throttled(node.time)) await node.update(findInPATH('node'))
+  if (node.value == null) return noIssues(uri)
 
   // A `null` ESLint instance should only be present on the very first attempt,
   // or when neither a global nor a local install is found. We always search for
@@ -168,43 +182,31 @@ async function maybeLint (editor, retry) {
   // Because the `access()` call underlying `ESLint.valid` is costly, we do not check
   // before every operation; instead, we try again if a ProcessError' is thrown.
   const dir = nova.path.dirname(path)
-  if (linters[dir] == null) linters[dir] = { eslint: null, lastUpdated: null }
-  let eslint = linters[dir].eslint
-  const throttle = throttled(linters[dir].lastUpdated)
-  if (eslint == null && !throttle) {
-    linters[dir].updating = true
+
+  if (linters[dir] == null) linters[dir] = new Updatable()
+  if (linters[dir].value == null && !throttled(linters[dir].time)) {
     try {
-      eslint = await getLinter(dir)
-      linters[dir].eslint = eslint
-      linters[dir].lastUpdated = Date.now()
-      linters[dir].updating = false
+      await linters[dir].update(getLinter(dir))
     } catch (error) {
-      linters[dir].updating = false
-      console.error(error.message)
+      console.error(error)
       if (error.name === 'ShellError' && maybeVoidNode() && retry !== false) {
         return maybeLint(editor, false)
       }
     }
   }
 
+  const eslint = linters[dir].value
+  if (eslint == null) return noIssues(uri)
+
   // Asynchronous update check to catch new project-local installs
   // that would otherwise be shadowed by a global ESLint install.
-  if (eslint != null && !linters[dir].updating && !throttle) {
-    linters[dir].updating = true
-    getLinter(dir)
-      .then(linter => {
-        const update = () => {
-          linters[dir].eslint = linter
-          linters[dir].lastUpdated = Date.now()
-        }
-        if ((linter == null) !== (eslint == null)) update()
-        if (linter != null && eslint != null && linter.binary !== eslint.binary) update()
-      })
-      .catch(console.error)
-      .finally(() => { linters[dir].updating = false })
+  if (!linters[dir].updating && !throttled(linters[dir].time)) {
+    try {
+      linters[dir].update(updateLinter(dir))
+    } catch (error) {
+      console.error(error)
+    }
   }
-
-  if (eslint == null) return noIssues(uri)
 
   // Because lint operations are asynchronous and their duration can
   // vary widely depending on how busy the system is, we need to ensure
@@ -231,7 +233,7 @@ async function maybeLint (editor, retry) {
     if (error.name === 'ProcessError') {
       const noNode = maybeVoidNode()
       const noESLint = !eslint.valid
-      if (noESLint) linters[dir] = null
+      if (noESLint) linters[dir] = new Updatable()
       if ((noNode || noESLint) && retry !== false) return maybeLint(editor, false)
     }
   }
@@ -245,12 +247,9 @@ async function maybeLint (editor, retry) {
  * @returns {boolean} Whether the cached data was voided.
  */
 function maybeVoidNode () {
-  const node = state.nodeInstall.path
+  const node = state.nodePath.value
   const voidNode = node != null && !nova.fs.access(node, nova.fs.X_OK)
-  if (voidNode) {
-    state.nodeInstall.path = null
-    state.nodeInstall.lastChecked = null
-  }
+  if (voidNode) state.nodePath = new Updatable()
   return voidNode
 }
 
