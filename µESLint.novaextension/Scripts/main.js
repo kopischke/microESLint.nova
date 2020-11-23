@@ -254,17 +254,6 @@ function maybeVoidNode () {
 }
 
 /**
- * Update the extension configuration.
- */
-function updateConfig () {
-  const prefix = ext.prefixConfig()
-  if (!nova.config.get(`${prefix}.updated.v1.1.0`)) {
-    nova.config.remove(`${prefix}.eslint-path`)
-    nova.config.set(`${prefix}.updated.v1.1.0`, true)
-  }
-}
-
-/**
  * Register the ESLint IssueAssistant.
  */
 function registerAssistant () {
@@ -335,6 +324,17 @@ function registerEditorListeners () {
       })
     })
   })
+}
+
+/**
+ * Update the extension configuration.
+ */
+function updateConfig () {
+  const prefix = ext.prefixConfig()
+  if (!nova.config.get(`${prefix}.updated.v1.1.0`)) {
+    nova.config.remove(`${prefix}.eslint-path`)
+    nova.config.set(`${prefix}.updated.v1.1.0`, true)
+  }
 }
 
 /**
