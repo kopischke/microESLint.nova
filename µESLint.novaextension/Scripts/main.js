@@ -41,7 +41,7 @@ const collection = new IssueCollection()
 /**
  * Extension state.
  * @property {boolean} activationErrorHandled - Has an activation error been handled already?
- * @property {boolean} nodePath - The Updatable node.js executable path.
+ * @property {boolean} nodePath - The Updatable Node executable path.
  */
 const state = {
   activationErrorHandled: false,
@@ -143,7 +143,7 @@ async function updateLinter (dir) {
  * @returns {boolean} Whether a lint operation was started.
  * @param {object} editor - The TextEditor to lint.
  * @param {boolean} [retry=true] Whether to retry linting on execution errors.
- * Currently, retries happens when either the eslint binary lookup or its
+ * Currently, retries happens when either the ESLint binary lookup or its
  * execution proper fails and we need to reset the path values for it or Node.
  * The retry attempts themselves set this to `false` as a loop breaker.
  */
@@ -243,7 +243,7 @@ async function maybeLint (editor, retry) {
 
 /**
  * Void our cached Node executable data if it is not valid anymore.
- * We call this when node-dependent operations fail.
+ * We call this when Node-dependent operations fail.
  * @returns {boolean} Whether the cached data was voided.
  */
 function maybeVoidNode () {
