@@ -149,100 +149,104 @@ async function updateLinter (dir) {
  * The retry attempts themselves set this to `false` as a loop breaker.
  */
 async function maybeLint (editor, retry) {
-  if (nova.workspace.config.get(configKeys.disabled)) {
-    collection.clear()
-    return []
-  }
+  try {
+    if (nova.workspace.config.get(configKeys.disabled)) {
+      collection.clear()
+      return []
+    }
 
-  // Do not lint documents we cannot walk the directory hierarchy of;
-  // however, we do lint empty documents, in case some rule covers that.
-  const doc = editor.document
-  const uri = doc.uri
-  const path = doc.path
-  if (doc.isUntitled || doc.isRemote) return noIssues(uri)
+    // Do not lint documents we cannot walk the directory hierarchy of;
+    // however, we do lint empty documents, in case some rule covers that.
+    const doc = editor.document
+    const uri = doc.uri
+    const path = doc.path
+    if (doc.isUntitled || doc.isRemote) return noIssues(uri)
 
-  // Get this early, there can be race conditions.
-  const src = getDocumentText(doc)
-  const config = ESLint.config(path)
-  if (config == null) return noIssues(uri)
+    // Get this early, there can be race conditions.
+    const src = getDocumentText(doc)
+    const config = ESLint.config(path)
+    if (config == null) return noIssues(uri)
 
-  // We need Node (both for npm-which and eslint).
-  // To not flood the user’s system with searches, we throttle them
-  // (the original `null` timestamp ensures we always do the first pass).
-  // Also, because `access()` calls are slow, we do not check for the
-  // validity of a once found Node executable every time, but rely on it
-  // being reset when execution errors happen.
-  const node = state.nodePath
-  if (node.value == null && !throttled(node.time)) await node.update(findInPATH('node'))
-  if (node.value == null) return noIssues(uri)
+    // We need Node (both for npm-which and eslint).
+    // To not flood the user’s system with searches, we throttle them
+    // (the original `null` timestamp ensures we always do the first pass).
+    // Also, because `access()` calls are slow, we do not check for the
+    // validity of a once found Node executable every time, but rely on it
+    // being reset when execution errors happen.
+    const node = state.nodePath
+    if (node.value == null && !throttled(node.time)) await node.update(findInPATH('node'))
+    if (node.value == null) return noIssues(uri)
 
-  // A `null` ESLint instance should only be present on the very first attempt,
-  // or when neither a global nor a local install is found. We always search for
-  // a binary in the former case (throttling does not happen on `null` timestamps),
-  // but throttle searches in the latter case, so as to not tax the user’s system.
-  // Because the `access()` call underlying `ESLint.valid` is costly, we do not check
-  // before every operation; instead, we try again if a ProcessError' is thrown.
-  const dir = nova.path.dirname(path)
+    // A `null` ESLint instance should only be present on the very first attempt,
+    // or when neither a global nor a local install is found. We always search for
+    // a binary in the former case (throttling does not happen on `null` timestamps),
+    // but throttle searches in the latter case, so as to not tax the user’s system.
+    // Because the `access()` call underlying `ESLint.valid` is costly, we do not check
+    // before every operation; instead, we try again if a ProcessError' is thrown.
+    const dir = nova.path.dirname(path)
 
-  if (linters[dir] == null) linters[dir] = new Updatable()
-  if (linters[dir].value == null && !throttled(linters[dir].time)) {
-    try {
-      await linters[dir].update(getLinter(dir))
-    } catch (error) {
-      console.error(error)
-      if (error.name === 'ShellError' && maybeVoidNode() && retry !== false) {
-        console.info('Retrying lint operation with re-set Node path …')
-        return maybeLint(editor, false)
+    if (linters[dir] == null) linters[dir] = new Updatable()
+    if (linters[dir].value == null && !throttled(linters[dir].time)) {
+      try {
+        await linters[dir].update(getLinter(dir))
+      } catch (error) {
+        console.error(error)
+        if (error.name === 'ShellError' && maybeVoidNode() && retry !== false) {
+          console.info('Retrying lint operation with re-set Node path …')
+          return maybeLint(editor, false)
+        }
       }
     }
-  }
 
-  const eslint = linters[dir].value
-  if (eslint == null) return noIssues(uri)
+    const eslint = linters[dir].value
+    if (eslint == null) return noIssues(uri)
 
-  // Asynchronous update check to catch new project-local installs
-  // that would otherwise be shadowed by a global ESLint install.
-  if (!linters[dir].updating && !throttled(linters[dir].time)) {
+    // Asynchronous update check to catch new project-local installs
+    // that would otherwise be shadowed by a global ESLint install.
+    if (!linters[dir].updating && !throttled(linters[dir].time)) {
+      try {
+        linters[dir].update(updateLinter(dir))
+      } catch (error) {
+        console.error(error)
+      }
+    }
+
+    // Because lint operations are asynchronous and their duration can
+    // vary widely depending on how busy the system is, we need to ensure
+    // we respect their start chronology when processing their results
+    // (i.e. ensure that slower older runs do not overwrite faster newer ones).
+    if (queue[uri] == null) queue[uri] = { lastStarted: 1, lastEnded: 0 }
+    const index = queue[uri].lastStarted++
     try {
-      linters[dir].update(updateLinter(dir))
+      const cwd = nova.path.dirname(config)
+      const results = await eslint.lint(src, path, cwd)
+      if (queue[uri].lastEnded < index) {
+        queue[uri].lastEnded = index
+        if (documentIsClosed(doc)) {
+          noIssues(uri)
+        } else {
+          const issues = filterIssues(results, doc)
+          const changed = changedIssues(collection.get(uri), issues)
+          if (changed) collection.set(uri, issues)
+        }
+      }
     } catch (error) {
       console.error(error)
-    }
-  }
-
-  // Because lint operations are asynchronous and their duration can
-  // vary widely depending on how busy the system is, we need to ensure
-  // we respect their start chronology when processing their results
-  // (i.e. ensure that slower older runs do not overwrite faster newer ones).
-  if (queue[uri] == null) queue[uri] = { lastStarted: 1, lastEnded: 0 }
-  const index = queue[uri].lastStarted++
-  try {
-    const cwd = nova.path.dirname(config)
-    const results = await eslint.lint(src, path, cwd)
-    if (queue[uri].lastEnded < index) {
-      queue[uri].lastEnded = index
-      if (documentIsClosed(doc)) {
-        noIssues(uri)
-      } else {
-        const issues = filterIssues(results, doc)
-        const changed = changedIssues(collection.get(uri), issues)
-        if (changed) collection.set(uri, issues)
+      noIssues(uri)
+      if (error.name === 'ProcessError') {
+        const noNode = maybeVoidNode()
+        const noESLint = !eslint.valid
+        if (noESLint) linters[dir] = new Updatable()
+        if ((noNode || noESLint) && retry !== false) {
+          const both = noNode && noESLint
+          const info = both ? 'Node and ESLint paths' : `${noNode ? 'Node' : 'ESLint'} path`
+          console.info(`Retrying lint operation with re-set ${info} …`)
+          return maybeLint(editor, false)
+        }
       }
     }
   } catch (error) {
     console.error(error)
-    noIssues(uri)
-    if (error.name === 'ProcessError') {
-      const noNode = maybeVoidNode()
-      const noESLint = !eslint.valid
-      if (noESLint) linters[dir] = new Updatable()
-      if ((noNode || noESLint) && retry !== false) {
-        const both = noNode && noESLint
-        const info = both ? 'Node and ESLint paths' : `${noNode ? 'Node' : 'ESLint'} path`
-        console.info(`Retrying lint operation with re-set ${info} …`)
-        return maybeLint(editor, false)
-      }
-    }
   }
 
   return []
