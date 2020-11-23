@@ -190,6 +190,7 @@ async function maybeLint (editor, retry) {
     } catch (error) {
       console.error(error)
       if (error.name === 'ShellError' && maybeVoidNode() && retry !== false) {
+        console.info('Retrying lint operation with re-set Node path …')
         return maybeLint(editor, false)
       }
     }
@@ -234,7 +235,12 @@ async function maybeLint (editor, retry) {
       const noNode = maybeVoidNode()
       const noESLint = !eslint.valid
       if (noESLint) linters[dir] = new Updatable()
-      if ((noNode || noESLint) && retry !== false) return maybeLint(editor, false)
+      if ((noNode || noESLint) && retry !== false) {
+        const both = noNode && noESLint
+        const info = both ? 'Node and ESLint paths' : `${noNode ? 'Node' : 'ESLint'} path`
+        console.info(`Retrying lint operation with re-set ${info} …`)
+        return maybeLint(editor, false)
+      }
     }
   }
 
