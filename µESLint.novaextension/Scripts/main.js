@@ -70,9 +70,19 @@ const queue = {}
  * @returns {boolean} Whether the operation should be throttled.
  * @param {?number} since - The UNIX timestamp to check the throttling delay for.
  */
-function throttled (since) {
+const throttled = (since) => {
   const limit = 60 * 1000 // = 1 min.
   return since != null && Date.now() - since <= limit
+}
+
+/**
+ * Void the Issue collection for a URI (if necessary).
+ * @returns {Array} An empty array (which we can return to .
+ * @param {string} uri - The URI to void.
+ */
+const noIssues = uri => {
+  if (collection.has(uri)) collection.remove(uri)
+  return []
 }
 
 /**
@@ -122,11 +132,6 @@ async function getLinter (dir) {
  * The retry attempts themselves set this to `false` as a loop breaker.
  */
 async function maybeLint (editor, retry) {
-  const noIssues = (uri) => {
-    if (collection.has(uri)) collection.remove(uri)
-    return []
-  }
-
   if (nova.workspace.config.get(configKeys.disabled)) {
     collection.clear()
     return []
