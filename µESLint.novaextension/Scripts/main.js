@@ -115,6 +115,7 @@ async function getLinter (dir) {
       error.name = 'ShellError'
       throw error
     } else {
+      console.info(`Trying to make '${bin}' executable, then re-trying to get a linter …`)
       await makeExecutable(bin)
       return getLinter(dir)
     }
