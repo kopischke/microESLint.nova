@@ -14,6 +14,7 @@ const {
   getDocumentText
 } = require('./lib/document')
 const ext = require('./lib/extension')
+const { nixalize } = require('./lib/path')
 const { runAsync } = require('./lib/process')
 
 /**
@@ -219,7 +220,7 @@ async function maybeLint (editor, retry) {
     const index = queue[uri].lastStarted++
     try {
       const cwd = nova.path.dirname(config)
-      const results = await eslint.lint(src, path, cwd)
+      const results = await eslint.lint(src, nixalize(path), cwd)
       if (queue[uri].lastEnded < index) {
         queue[uri].lastEnded = index
         if (documentIsClosed(doc)) {
