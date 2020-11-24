@@ -1,6 +1,6 @@
 /**
  * @file General utility methods for boilerplate poorer extensions.
- * @version 2.0.0
+ * @version 3.0.0
  * @author Martin Kopischke <martin@kopischke.net>
  * @license MIT
  */
@@ -15,14 +15,6 @@
 exports.getLocalConfig = function (key, type) {
   const local = nova.workspace.config.get(key, type)
   return local != null ? local : nova.config.get(key, type)
-}
-
-/**
- * Get the current user’s qualified $HOME path.
- * @returns {string} The path.
- */
-exports.homePath = function () {
-  return nova.path.normalize(nova.path.expanduser('~'))
 }
 
 /**
