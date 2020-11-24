@@ -1,6 +1,7 @@
 /**
  * @file Core extension issues functionality.
  */
+let lastLogged = null
 
 /**
  * Filter out ESLint issues that are not source code issues.
@@ -22,14 +23,24 @@ exports.filterIssues = function (issues, document) {
       issue.message.match(/^File ignored\b/)
     ) return []
 
-    // Suppress parsing errors from file types not supposed to be linted.
-    // Essentially, we weed out fatal parsing errors that stem from non-JS files.
-    // This might suppress some plugins’ errors on malformed input.
-    if (
-      issue.severity === IssueSeverity.Error &&
-      issue.code == null &&
-      !document.syntax.match(/\bjavascript\b/i)
-    ) return []
+    // Suppress most parsing errors as ESLint returns misconfiguration or
+    // the results or linting file types not supposed or able to be linted
+    // as a single “fatal” linting error, but we would like to keep bona fide
+    // parsing errors on malformed JS input.
+    if (issue.severity === IssueSeverity.Error && issue.code == null) {
+      if (issue.line == null || issue.line === 0) {
+        // These are execution errors: discard but log (without flooding).
+        if (lastLogged !== issue.message) console.warn(issue.message)
+        lastLogged = issue.message
+      } else if (document.syntax.match(/\bjavascript\b/i)) {
+        // Keep only locatable parsing errors that stem from JS files.
+        // If we don’t do this, unlintable file formats (like, say, XML)
+        // end up having parsing errors at random locations. Although
+        // that would be technically correct, it makes for horrible UX.
+        return issues
+      }
+      return []
+    }
   }
 
   return issues
