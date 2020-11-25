@@ -1,3 +1,28 @@
+## Version 1.3.0
+
+Full compatibility with the [TypeScript ESLint](https://typescript-eslint.io/) plugin and parser. The improvements that went into this should also make _µESLint_ play nice with other plugins that extend ESLint beyond its original boundaries and / or have implementation quirks.
+
+**Added**
+
+- Support for relative paths in `parserOptions` settings ([#2](https://github.com/kopischke/microESLint.nova/issues/2)).
+
+**Fixed**
+
+- Some ESLint plugins could not handle macOS paths including the root mount point (`/Volumes/Macintosh HD` by default) of the kind that Nova’s path APIs return ([#3](https://github.com/kopischke/microESLint.nova/issues/3)).
+- Errors while linting would not be logged by either Nova or the extension (_µESLint_ was relying on Nova logging thrown errors, but the extension subsystem seems to not do that for asynchronous functions).
+- Uninstalling Node while the extension was active would not be handled correctly.
+- Project-specific ESLint installs would not always be detected correctly.
+- Update checks for a new project-specific ESLint install would happen too often, possibly degrading system performance.
+
+**Changed**
+
+- Instead of validating its required binaries at every lint, _µESLint_ now checks for errors and tries to recover from them. This should improve performance on slower, HD based systems, as the validation is a costly(-ish) file system operation.
+- ESLint parsing errors due to misconfiguration or plugin issues are no longer quietly dropped but logged to the extension console instead.
+
+**Hat tips and credits**
+
+- [Nate Silva](https://github.com/natesilva) for reporting _µESLint_’s incompatibility with the TypeScript ESLint plugin, contributing a well-designed test case and patiently bearing with me while I worked out the kinks.
+
 ## Version 1.2.0
 
 Improvements to, and fixes for, the commands for opening ESLint files.
