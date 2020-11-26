@@ -1,6 +1,6 @@
 /**
  * @file General utility methods for boilerplate poorer extensions.
- * @version 3.0.0
+ * @version 3.1.0
  * @author Martin Kopischke <martin@kopischke.net>
  * @license MIT
  */
@@ -13,8 +13,9 @@
  * @see {@link https://docs.nova.app/api-reference/configuration/}
  */
 exports.getLocalConfig = function (key, type) {
-  const local = nova.workspace.config.get(key, type)
-  return local != null ? local : nova.config.get(key, type)
+  return nova.workspace.config.get(key) != null
+    ? nova.workspace.config.get(key, type)
+    : nova.config.get(key, type)
 }
 
 /**
