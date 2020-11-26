@@ -79,7 +79,7 @@ const throttled = (since) => {
 
 /**
  * Void the Issue collection for a URI (if necessary).
- * @returns {Array} An empty array (which we can return to .
+ * @returns {Array} An empty array (which we can return to the Assistant).
  * @param {string} uri - The URI to void.
  */
 const noIssues = uri => {
